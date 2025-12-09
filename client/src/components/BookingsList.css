@@ -1,0 +1,136 @@
+.bookings-list {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bookings-list h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+  font-size: 1.25rem;
+}
+
+.bookings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.booking-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.booking-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.booking-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.booking-header h3 {
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.booking-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.booking-status.confirmed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.booking-status.pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.booking-status.cancelled {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.booking-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.detail-label {
+  font-size: 0.75rem;
+  color: #666;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.detail-value {
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.shared-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+
+.shared-with {
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.shareable-badge {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.bookings-empty {
+  background: white;
+  border-radius: 12px;
+  padding: 3rem;
+  text-align: center;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .bookings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

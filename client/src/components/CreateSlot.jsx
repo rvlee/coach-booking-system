@@ -1,0 +1,766 @@
+import { useEffect, useState } from 'react';
+import axios from 'axios';
+import WeeklyCalendar from './WeeklyCalendar';
+import './CreateSlot.css';
+
+function pad(value) {
+  return value.toString().padStart(2, '0');
+}
+
+// Custom time selector component that only allows :00 or :30
+function TimeSelector({ value, onChange, label }) {
+  const [hours, minutes] = value.split(':').map(Number);
+  
+  const handleHourChange = (e) => {
+    const newHour = parseInt(e.target.value, 10);
+    onChange(`${pad(newHour)}:${pad(minutes)}`);
+  };
+  
+  const handleMinuteChange = (e) => {
+    const newMinute = parseInt(e.target.value, 10);
+    onChange(`${pad(hours)}:${pad(newMinute)}`);
+  };
+
+  return (
+    <div className="form-group">
+      <label>{label}</label>
+      <div className="time-selector">
+        <select value={hours} onChange={handleHourChange} className="time-hour">
+          {Array.from({ length: 24 }, (_, i) => (
+            <option key={i} value={i}>{pad(i)}</option>
+          ))}
+        </select>
+        <span className="time-separator">:</span>
+        <select value={minutes} onChange={handleMinuteChange} className="time-minute">
+          <option value={0}>00</option>
+          <option value={30}>30</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function addMinutesToTime(timeStr, minutesToAdd) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const total = h * 60 + m + Number(minutesToAdd || 0);
+  const nh = Math.floor(total / 60) % 24;
+  const nm = total % 60;
+  return `${pad(nh)}:${pad(nm)}`;
+}
+
+function buildIso(dateStr, time) {
+  const [hours, minutes] = time.split(':').map(Number);
+  // Create a date object in local timezone
+  // dateStr is in format YYYY-MM-DD, time is in format HH:MM
+  const dt = new Date(dateStr + 'T' + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0') + ':00');
+  // Return ISO string - this will convert to UTC, but the calendar will convert back to local for display
+  return dt.toISOString();
+}
+
+function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [weekStart, setWeekStart] = useState(getWeekStart(today));
+  const [daySettings, setDaySettings] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [googleStatus, setGoogleStatus] = useState({ connected: undefined, calendar_id: null });
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [busyByDate, setBusyByDate] = useState({});
+  const [busyLoading, setBusyLoading] = useState(false);
+  const [busyError, setBusyError] = useState('');
+  const [createdSlots, setCreatedSlots] = useState([]);
+
+  const weekDays = getWeekDays(weekStart);
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // Initialize day settings when week changes (preserve existing, don't create defaults)
+  useEffect(() => {
+    const settings = { ...daySettings };
+    weekDays.forEach((date) => {
+      if (!settings[date]) {
+        settings[date] = {
+          enabled: false,
+          timeSlots: []
+        };
+      }
+    });
+    // Remove dates that are no longer in the current week
+    Object.keys(settings).forEach((date) => {
+      if (!weekDays.includes(date)) {
+        delete settings[date];
+      }
+    });
+    setDaySettings(settings);
+  }, [weekStart]);
+
+  // Round time to nearest :00 or :30
+  const roundToHalfHour = (timeStr) => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const rounded = m < 15 ? 0 : m < 45 ? 30 : 0;
+    const hours = m >= 45 ? h + 1 : h;
+    return `${pad(hours % 24)}:${pad(rounded)}`;
+  };
+
+  const handleTimeChange = (date, slotIndex, field, value) => {
+    // Value is already in HH:MM format from TimeSelector, just ensure it's valid
+    const [h, m] = value.split(':').map(Number);
+    const validTime = `${pad(h % 24)}:${pad(m === 0 || m === 30 ? m : 0)}`;
+    const settings = { ...daySettings };
+    const day = settings[date] || { enabled: false, timeSlots: [] };
+    const slots = [...(day.timeSlots || [])];
+    slots[slotIndex] = {
+      ...slots[slotIndex],
+      [field]: validTime
+    };
+    settings[date] = {
+      ...day,
+      timeSlots: slots
+    };
+    setDaySettings(settings);
+  };
+
+  const updateDaySetting = (date, field, value) => {
+    const current = daySettings[date] || { enabled: false, timeSlots: [] };
+    setDaySettings({
+      ...daySettings,
+      [date]: {
+        ...current,
+        [field]: value
+      }
+    });
+  };
+
+  const addTimeSlot = (date) => {
+    const settings = { ...daySettings };
+    const day = settings[date] || { enabled: false, timeSlots: [] };
+    const slots = [...(day.timeSlots || [])];
+    slots.push({
+      startTime: '09:00',
+      endTime: '17:00',
+      duration: 60
+    });
+    settings[date] = {
+      ...day,
+      enabled: true,
+      timeSlots: slots
+    };
+    setDaySettings(settings);
+  };
+
+  const removeTimeSlot = (date, slotIndex) => {
+    const settings = { ...daySettings };
+    const day = settings[date] || { enabled: false, timeSlots: [] };
+    const slots = [...(day.timeSlots || [])];
+    slots.splice(slotIndex, 1);
+    settings[date] = {
+      ...day,
+      timeSlots: slots,
+      enabled: slots.length > 0
+    };
+    setDaySettings(settings);
+  };
+
+  const generateSlots = (start, end, dur) => {
+    const slots = [];
+    const startRounded = roundToHalfHour(start);
+    const endRounded = roundToHalfHour(end);
+    
+    let current = startRounded;
+    while (true) {
+      const [h, m] = current.split(':').map(Number);
+      const currentMinutes = h * 60 + m;
+      
+      const [eh, em] = endRounded.split(':').map(Number);
+      const endMinutes = eh * 60 + em;
+      
+      if (currentMinutes + dur > endMinutes) {
+        break;
+      }
+      
+      const slotEnd = addMinutesToTime(current, dur);
+      slots.push({
+        start: current,
+        end: slotEnd,
+        duration: dur
+      });
+      
+      current = slotEnd;
+    }
+    
+    return slots;
+  };
+
+  const getSlotsForDay = (date) => {
+    const settings = daySettings[date];
+    if (!settings || !settings.enabled || !settings.timeSlots || settings.timeSlots.length === 0) return [];
+    
+    const allSlots = [];
+    settings.timeSlots.forEach((slotConfig) => {
+      const slots = generateSlots(slotConfig.startTime, slotConfig.endTime, slotConfig.duration);
+      allSlots.push(...slots);
+    });
+    return allSlots;
+  };
+
+  const getAllSlots = () => {
+    const allSlots = [];
+    weekDays.forEach((date) => {
+      const daySlots = getSlotsForDay(date);
+      daySlots.forEach((slot) => {
+        allSlots.push({
+          ...slot,
+          date
+        });
+      });
+    });
+    return allSlots;
+  };
+
+  // Initial load: fetch Google status and slots on mount
+  useEffect(() => {
+    const initLoad = async () => {
+      // Fetch Google status and slots in parallel
+      const [statusRes, slots] = await Promise.all([
+        axios.get('/api/google/status').catch(() => ({ data: { connected: false, calendar_id: null } })),
+        fetchWeekSlots(weekStart)
+      ]);
+      
+      const status = statusRes.data || { connected: false, calendar_id: null };
+      setGoogleStatus(status);
+      setIsInitialized(true);
+      
+      // Always display slots immediately, regardless of Google status
+      if (status.connected) {
+        await fetchWeekBusy(weekStart, slots);
+      } else {
+        updateBusyBlocksWithSlots({}, slots);
+      }
+    };
+    
+    initLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Reload when week changes, slots are updated, or Google status changes
+  useEffect(() => {
+    // Skip if not initialized yet (handled by initLoad)
+    if (!isInitialized) return;
+    
+    const loadWeekData = async () => {
+      // Always fetch slots first
+      const slots = await fetchWeekSlots(weekStart);
+      
+      // Then fetch Google busy if connected, or just update with slots
+      if (googleStatus.connected) {
+        await fetchWeekBusy(weekStart, slots);
+      } else {
+        // If Google not connected, just show created slots
+        // Pass slots directly to avoid race condition with state updates
+        updateBusyBlocksWithSlots({}, slots);
+      }
+    };
+    
+    loadWeekData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart, googleStatus.connected, slotsRefreshTrigger, isInitialized]);
+
+  const updateBusyBlocksWithSlots = (googleBusy, slotsToUse = null) => {
+    const combined = { ...googleBusy };
+    
+    // Use provided slots or fall back to state
+    const slots = slotsToUse !== null ? slotsToUse : createdSlots;
+    
+    // Add created slots to the busy blocks
+    if (slots && slots.length > 0) {
+      // Group slots by date first to see what we're working with
+      const slotsByDate = {};
+      slots.forEach((slot) => {
+        if (!slot.start_time || !slot.end_time) {
+          console.warn('Invalid slot:', slot);
+          return;
+        }
+        
+        const slotDate = new Date(slot.start_time).toISOString().slice(0, 10);
+        if (!slotsByDate[slotDate]) {
+          slotsByDate[slotDate] = [];
+        }
+        slotsByDate[slotDate].push(slot);
+      });
+      
+      // Now add all slots for each date
+      Object.keys(slotsByDate).forEach((date) => {
+        if (!combined[date]) {
+          combined[date] = [];
+        }
+        // Add all slots for this date
+        slotsByDate[date].forEach((slot) => {
+          combined[date].push({
+            start: slot.start_time,
+            end: slot.end_time,
+            isCreatedSlot: true
+          });
+        });
+      });
+    }
+
+    setBusyByDate(combined);
+  };
+
+  // Note: We don't need a separate useEffect for createdSlots anymore
+  // because slots are now passed directly to updateBusyBlocksWithSlots/fetchWeekBusy
+  // This prevents race conditions and ensures slots are displayed when fetched
+
+  const fetchGoogleStatus = async () => {
+    try {
+      const res = await axios.get('/api/google/status');
+      setGoogleStatus(res.data);
+    } catch (err) {
+      // ignore
+    }
+  };
+
+  const fetchWeekSlots = async (weekStartDate) => {
+    try {
+      const days = getWeekDays(weekStartDate);
+      const weekStart = new Date(days[0] + 'T00:00:00');
+      const weekEnd = new Date(days[6] + 'T23:59:59.999');
+      
+      const response = await axios.get('/api/slots');
+      const allSlots = response.data || [];
+      
+      // Filter slots that fall within the current week
+      const weekSlots = allSlots.filter((slot) => {
+        if (!slot.start_time) return false;
+        const slotDate = new Date(slot.start_time);
+        return slotDate >= weekStart && slotDate <= weekEnd;
+      });
+      
+      setCreatedSlots(weekSlots);
+      return weekSlots; // Return slots for immediate use
+    } catch (err) {
+      console.error('Error fetching slots:', err);
+      setCreatedSlots([]);
+      return [];
+    }
+  };
+
+  const fetchWeekBusy = async (weekStartDate, slotsToMerge = null) => {
+    try {
+      setBusyLoading(true);
+      setBusyError('');
+      const days = getWeekDays(weekStartDate);
+      const responses = await Promise.all(
+        days.map((d) =>
+          axios
+            .get('/api/google/busy', { params: { date: d } })
+            .then((res) => ({ date: d, busy: res.data.busy || [] }))
+            .catch((err) => {
+              console.error(`Error fetching busy times for ${d}:`, err);
+              return { date: d, busy: [] };
+            })
+        )
+      );
+      const map = {};
+      responses.forEach((r) => {
+        // Mark Google Calendar busy blocks so we can distinguish them from created slots
+        map[r.date] = (r.busy || []).map(busy => ({
+          ...busy,
+          isCreatedSlot: false // This is from Google Calendar
+        }));
+      });
+      
+      // Merge with created slots - use provided slots or current state
+      const slots = slotsToMerge !== null ? slotsToMerge : createdSlots;
+      const combined = { ...map };
+      
+      // Group slots by date to ensure all are added
+      const slotsByDate = {};
+      slots.forEach((slot) => {
+        if (!slot.start_time || !slot.end_time) return;
+        // Get the date in local timezone, not UTC
+        const slotDateObj = new Date(slot.start_time);
+        const year = slotDateObj.getFullYear();
+        const month = String(slotDateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(slotDateObj.getDate()).padStart(2, '0');
+        const slotDate = `${year}-${month}-${day}`;
+        if (!slotsByDate[slotDate]) {
+          slotsByDate[slotDate] = [];
+        }
+        slotsByDate[slotDate].push(slot);
+      });
+      
+      // Add all slots for each date
+      Object.keys(slotsByDate).forEach((date) => {
+        if (!combined[date]) {
+          combined[date] = [];
+        }
+        slotsByDate[date].forEach((slot) => {
+          combined[date].push({
+            start: slot.start_time,
+            end: slot.end_time,
+            isCreatedSlot: true
+          });
+        });
+      });
+      
+      setBusyByDate(combined);
+    } catch (err) {
+      setBusyError(err.response?.data?.error || 'Failed to load busy times');
+    } finally {
+      setBusyLoading(false);
+    }
+  };
+
+  const connectGoogle = async () => {
+    try {
+      const res = await axios.get('/api/google/auth');
+      const url = res.data.url;
+      const popup = window.open(url, '_blank', 'width=500,height=700');
+      const poll = setInterval(async () => {
+        if (popup && popup.closed) {
+          clearInterval(poll);
+          await fetchGoogleStatus();
+          // Fetch slots first, then merge with Google busy times
+          const slots = await fetchWeekSlots(weekStart);
+          await fetchWeekBusy(weekStart, slots);
+        }
+      }, 1000);
+    } catch (err) {
+      setError('Failed to start Google auth');
+    }
+  };
+
+  // Check if a time range overlaps with any busy blocks
+  const checkOverlap = (slotStart, slotEnd, busyBlocks) => {
+    if (!busyBlocks || busyBlocks.length === 0) return false;
+    
+    const slotStartTime = new Date(slotStart).getTime();
+    const slotEndTime = new Date(slotEnd).getTime();
+    
+    return busyBlocks.some((busy) => {
+      const busyStart = new Date(busy.start).getTime();
+      const busyEnd = new Date(busy.end).getTime();
+      
+      // Check if slots overlap (they overlap if one starts before the other ends)
+      return (slotStartTime < busyEnd && slotEndTime > busyStart);
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const allSlots = getAllSlots();
+
+      if (allSlots.length === 0) {
+        setError('Please enable and configure at least one day with slots.');
+        setLoading(false);
+        return;
+      }
+
+      // Check for overlaps with existing slots and Google Calendar busy times
+      const overlappingSlots = [];
+      
+      allSlots.forEach((slot) => {
+        const slotDate = slot.date;
+        const slotStart = buildIso(slot.date, slot.start);
+        const slotEnd = buildIso(slot.date, slot.end);
+        const busyBlocks = busyByDate[slotDate] || [];
+        
+        // Check overlaps with existing created slots (from "Your Slots")
+        const existingSlots = busyBlocks.filter((busy) => {
+          return busy.isCreatedSlot === true;
+        });
+        
+        if (checkOverlap(slotStart, slotEnd, existingSlots)) {
+          const slotDateObj = new Date(slotDate);
+          const dateStr = slotDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const slotTime = `${slot.start} - ${slot.end}`;
+          overlappingSlots.push(`${dateStr} at ${slotTime} (overlaps with existing slot)`);
+        }
+        
+        // Also check overlaps with Google Calendar busy times if connected
+        if (googleStatus.connected) {
+          const googleBusyBlocks = busyBlocks.filter((busy) => {
+            return !busy.isCreatedSlot;
+          });
+          
+          if (checkOverlap(slotStart, slotEnd, googleBusyBlocks)) {
+            const slotDateObj = new Date(slotDate);
+            const dateStr = slotDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const slotTime = `${slot.start} - ${slot.end}`;
+            // Only add if not already in the list
+            const overlapStr = `${dateStr} at ${slotTime} (overlaps with Google Calendar)`;
+            if (!overlappingSlots.includes(overlapStr)) {
+              overlappingSlots.push(overlapStr);
+            }
+          }
+        }
+      });
+      
+      if (overlappingSlots.length > 0) {
+        setError(`Cannot create slots - the following times have conflicts:\n${overlappingSlots.join('\n')}`);
+        setLoading(false);
+        return;
+      }
+
+      const slotsPayload = allSlots.map((slot) => ({
+        start_time: buildIso(slot.date, slot.start),
+        end_time: buildIso(slot.date, slot.end),
+        duration_minutes: Number(slot.duration)
+      }));
+
+      console.log('Creating slots:', slotsPayload.length, 'slots');
+      if (slotsPayload.length > 0) {
+        console.log('First slot:', slotsPayload[0]);
+        console.log('Last slot:', slotsPayload[slotsPayload.length - 1]);
+      }
+
+      const response = await axios.post('/api/slots/batch', { slots: slotsPayload });
+      
+      if (response.data?.slots) {
+        console.log('Created slots:', response.data.slots.length);
+        console.log('Sample created slots:', response.data.slots.slice(0, 3));
+      }
+      if (response.data?.slots) {
+        onSlotCreated(response.data.slots);
+        // Refresh slots to show them on the calendar
+        const updatedSlots = await fetchWeekSlots(weekStart);
+        // Update calendar with new slots
+        if (googleStatus.connected) {
+          await fetchWeekBusy(weekStart, updatedSlots);
+        } else {
+          updateBusyBlocksWithSlots({}, updatedSlots);
+        }
+      }
+
+
+      // Reset all day settings
+      const resetSettings = {};
+      weekDays.forEach((date) => {
+        resetSettings[date] = {
+          enabled: false,
+          timeSlots: []
+        };
+      });
+      setDaySettings(resetSettings);
+      setError('');
+    } catch (err) {
+      console.error('Batch create error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to create slot';
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalSlots = getAllSlots().length;
+
+  return (
+    <div className="create-slot">
+      <h2>Create Slots</h2>
+      <div className="slot-grid">
+        <div className="calendar-panel">
+          <div className="week-nav">
+            <button type="button" onClick={() => setWeekStart(shiftWeek(weekStart, -1))}>
+              ← Previous
+            </button>
+            <div className="week-label">{formatWeekRange(weekStart)}</div>
+            <button type="button" onClick={() => setWeekStart(shiftWeek(weekStart, 1))}>
+              Next →
+            </button>
+          </div>
+          <WeeklyCalendar
+            weekDays={weekDays}
+            selectedDays={new Set(weekDays.filter((d) => daySettings[d]?.enabled))}
+            onToggleDay={() => {}}
+            busyByDate={busyByDate}
+          />
+        </div>
+
+        <form onSubmit={handleSubmit} className="slot-form">
+          {!googleStatus.connected && (
+            <div className="google-banner">
+              <div>
+                <strong>Connect Google Calendar</strong>
+                <p>Sync slots to a dedicated calendar and see busy blocks.</p>
+              </div>
+              <button type="button" className="connect-btn" onClick={connectGoogle}>
+                Connect
+              </button>
+            </div>
+          )}
+
+          {googleStatus.connected && (
+            <div className="google-banner connected">
+              <div>
+                <strong>Google Calendar connected</strong>
+                <p>Busy times are loaded for this week.</p>
+              </div>
+              <button type="button" className="secondary-btn" onClick={() => fetchWeekBusy(weekStart)} disabled={busyLoading}>
+                {busyLoading ? 'Refreshing...' : 'Refresh busy'}
+              </button>
+            </div>
+          )}
+
+          <div className="days-list">
+            {weekDays.map((date, idx) => {
+              const d = new Date(date);
+              const dayName = dayNames[idx];
+              const settings = daySettings[date] || { enabled: false, timeSlots: [] };
+              const timeSlots = settings.timeSlots || [];
+              const daySlots = getSlotsForDay(date);
+              const busy = busyByDate[date] || [];
+
+              return (
+                <div key={date} className="day-row">
+                  <div className="day-row-header">
+                    <div className="day-info">
+                      <input
+                        type="checkbox"
+                        checked={settings.enabled}
+                        onChange={(e) => updateDaySetting(date, 'enabled', e.target.checked)}
+                        className="day-checkbox"
+                      />
+                      <label className="day-label">
+                        <strong>{dayName}</strong>
+                        <span className="day-date">{d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                      </label>
+                    </div>
+                    {busy.length > 0 && (
+                      <span className="busy-badge">{busy.length} busy</span>
+                    )}
+                    {settings.enabled && daySlots.length > 0 && (
+                      <span className="slots-badge">{daySlots.length} slots</span>
+                    )}
+                  </div>
+
+                  {settings.enabled && (
+                    <div className="day-time-slots">
+                      {timeSlots.map((slotConfig, slotIdx) => {
+                        const slotPreview = generateSlots(slotConfig.startTime, slotConfig.endTime, slotConfig.duration);
+                        return (
+                          <div key={slotIdx} className="time-slot-config">
+                            <div className="time-slot-fields">
+                              <TimeSelector
+                                label="Start time"
+                                value={slotConfig.startTime}
+                                onChange={(newTime) => handleTimeChange(date, slotIdx, 'startTime', newTime)}
+                              />
+                              <TimeSelector
+                                label="End time"
+                                value={slotConfig.endTime}
+                                onChange={(newTime) => handleTimeChange(date, slotIdx, 'endTime', newTime)}
+                              />
+                              <div className="form-group">
+                                <label>Duration (min)</label>
+                                <select
+                                  value={slotConfig.duration}
+                                  onChange={(e) => {
+                                    const settings = { ...daySettings };
+                                    const day = settings[date] || { enabled: false, timeSlots: [] };
+                                    const slots = [...(day.timeSlots || [])];
+                                    slots[slotIdx] = {
+                                      ...slots[slotIdx],
+                                      duration: parseInt(e.target.value, 10)
+                                    };
+                                    settings[date] = {
+                                      ...day,
+                                      timeSlots: slots
+                                    };
+                                    setDaySettings(settings);
+                                  }}
+                                >
+                                  <option value="15">15</option>
+                                  <option value="30">30</option>
+                                  <option value="45">45</option>
+                                  <option value="60">60</option>
+                                  <option value="90">90</option>
+                                  <option value="120">120</option>
+                                </select>
+                              </div>
+                              <button
+                                type="button"
+                                className="remove-slot-btn"
+                                onClick={() => removeTimeSlot(date, slotIdx)}
+                                aria-label="Remove time slot"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            {slotPreview.length > 0 && (
+                              <div className="slot-preview-mini">
+                                {slotPreview.length} slot{slotPreview.length !== 1 ? 's' : ''}: {slotPreview.slice(0, 2).map(s => `${s.start}-${s.end}`).join(', ')}
+                                {slotPreview.length > 2 && ` +${slotPreview.length - 2} more`}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        className="add-time-slot-btn"
+                        onClick={() => addTimeSlot(date)}
+                      >
+                        + Add time slot
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <div className="submit-section">
+            <div className="slot-count">
+              {totalSlots > 0 ? `${totalSlots} slot${totalSlots === 1 ? '' : 's'} ready` : 'Enable days and configure times above'}
+            </div>
+            <button type="submit" className="create-btn" disabled={loading || totalSlots === 0}>
+              {loading ? 'Creating...' : 'Create All Slots'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function getWeekStart(dateStr) {
+  const d = new Date(dateStr);
+  const day = d.getDay(); // 0-6 (Sun-Sat)
+  const diff = d.getDate() - day + 1; // start Monday
+  const monday = new Date(d);
+  monday.setDate(diff);
+  return monday.toISOString().slice(0, 10);
+}
+
+function getWeekDays(weekStartStr) {
+  const days = [];
+  const start = new Date(weekStartStr);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+function shiftWeek(weekStartStr, delta) {
+  const d = new Date(weekStartStr);
+  d.setDate(d.getDate() + delta * 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatWeekRange(weekStartStr) {
+  const start = new Date(weekStartStr);
+  const end = new Date(weekStartStr);
+  end.setDate(end.getDate() + 6);
+  const opts = { month: 'short', day: 'numeric' };
+  return `${start.toLocaleDateString(undefined, opts)} - ${end.toLocaleDateString(undefined, opts)}`;
+}
+
+export default CreateSlot;

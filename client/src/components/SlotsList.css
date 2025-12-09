@@ -1,0 +1,428 @@
+.slots-list {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
+}
+
+.slots-list h2 {
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.25rem;
+}
+
+.booking-link-section-top {
+  background: #f0f4ff;
+  border: 2px solid #667eea;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.booking-link-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.booking-link-label {
+  font-size: 0.9rem;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.booking-link-loading {
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.booking-link-error {
+  color: #c33;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.retry-link-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retry-link-btn:hover {
+  background: #5568d3;
+}
+
+.booking-link-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.booking-link-input-small {
+  flex: 1;
+  padding: 0.625rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: white;
+  color: #333;
+  font-family: monospace;
+  min-width: 0;
+}
+
+.copy-link-btn-small {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.625rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.copy-link-btn-small:hover {
+  background: #5568d3;
+}
+
+.slots-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slot-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.75rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #fafafa;
+}
+
+.slot-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.1);
+}
+
+.slot-content-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slot-main-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.slot-time-compact {
+  font-size: 0.9rem;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.slot-meta-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.slot-duration-compact {
+  color: #666;
+}
+
+.slot-status-compact {
+  padding: 0.15rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.slot-status-compact.available {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.slot-status-compact.booked {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.slot-actions-compact {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e8e8e8;
+  justify-content: flex-end;
+}
+
+.edit-btn-compact,
+.delete-btn-compact {
+  background: transparent;
+  border: none;
+  padding: 0.35rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.edit-btn-compact:hover:not(:disabled) {
+  background: #e8e8f5;
+}
+
+.edit-btn-compact:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.delete-btn-compact:hover:not(:disabled) {
+  background: #fee;
+}
+
+.delete-btn-compact:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.edit-btn,
+.copy-link-btn,
+.delete-btn {
+  flex: 1;
+  padding: 0.625rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background: #667eea;
+  color: white;
+}
+
+.edit-btn:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.edit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.copy-link-btn {
+  background: #667eea;
+  color: white;
+}
+
+.copy-link-btn:hover {
+  background: #5568d3;
+}
+
+.delete-btn {
+  background: #fee;
+  color: #c33;
+  border: none;
+  cursor: pointer;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #fcc;
+}
+
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.slot-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.edit-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.edit-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.edit-form-group label {
+  font-size: 0.8rem;
+  color: #666;
+  font-weight: 600;
+}
+
+.edit-form-group input {
+  padding: 0.625rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.edit-form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.duration-group {
+  max-width: 150px;
+}
+
+.duration-group input {
+  width: 100%;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.save-btn,
+.cancel-btn {
+  flex: 1;
+  padding: 0.625rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.save-btn {
+  background: #667eea;
+  color: white;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.slots-empty {
+  background: white;
+  border-radius: 12px;
+  padding: 3rem;
+  text-align: center;
+  color: #666;
+}
+
+@media (min-width: 768px) {
+  .slots-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .slot-card {
+    padding: 1rem;
+  }
+
+  .slot-content-compact {
+    gap: 1rem;
+  }
+
+  .slot-time-compact {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .slot-meta-compact {
+    gap: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .slot-status-compact {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .slot-actions-compact {
+    padding-top: 0.75rem;
+    border-top: 1px solid #e8e8e8;
+    gap: 0.75rem;
+  }
+
+  .edit-btn-compact,
+  .delete-btn-compact {
+    padding: 0.5rem;
+    font-size: 1.1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+
+  .slot-card {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .booking-link-input-group {
+    flex-direction: column;
+  }
+
+  .booking-link-input-small {
+    width: 100%;
+  }
+
+  .copy-link-btn-small {
+    width: 100%;
+  }
+
+  .edit-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
