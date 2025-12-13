@@ -1,17 +1,23 @@
+import { WeeklyCalendarProps, BusyPeriod } from '../types';
 import './WeeklyCalendar.css';
 
 const HOURS_START = 8;
 const HOURS_END = 24; // exclusive end (i.e., up to 12am/midnight)
 
-function formatDateLabel(dateStr) {
+interface DateLabel {
+  day: string;
+  monthDay: string;
+}
+
+function formatDateLabel(dateStr: string): DateLabel {
   const d = new Date(dateStr);
   const day = d.toLocaleDateString(undefined, { weekday: 'short' });
   const monthDay = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   return { day, monthDay };
 }
 
-function WeeklyCalendar({ weekDays, selectedDays, onToggleDay, busyByDate }) {
-  const hours = [];
+function WeeklyCalendar({ weekDays, selectedDays, onToggleDay, busyByDate }: WeeklyCalendarProps) {
+  const hours: number[] = [];
   for (let h = HOURS_START; h < HOURS_END; h++) {
     hours.push(h);
   }
@@ -20,8 +26,8 @@ function WeeklyCalendar({ weekDays, selectedDays, onToggleDay, busyByDate }) {
     hours.push(24);
   }
 
-  const renderBusyBlocks = (dateStr) => {
-    const busy = busyByDate[dateStr] || [];
+  const renderBusyBlocks = (dateStr: string): JSX.Element[] => {
+    const busy: BusyPeriod[] = busyByDate[dateStr] || [];
     return busy.map((b, idx) => {
       const start = new Date(b.start);
       const end = new Date(b.end);

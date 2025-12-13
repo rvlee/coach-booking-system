@@ -1,22 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
 import axios from 'axios';
 import WeeklyCalendar from './WeeklyCalendar';
+import { CreateSlotProps, Slot, DaySetting, TimeSlotConfig, GoogleCalendarStatus, BusyPeriodWithFlag, DaySlot } from '../types';
 import './CreateSlot.css';
 
-function pad(value) {
+function pad(value: number): string {
   return value.toString().padStart(2, '0');
 }
 
+interface TimeSelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+}
+
 // Custom time selector component that only allows :00 or :30
-function TimeSelector({ value, onChange, label }) {
+function TimeSelector({ value, onChange, label }: TimeSelectorProps) {
   const [hours, minutes] = value.split(':').map(Number);
   
-  const handleHourChange = (e) => {
+  const handleHourChange = (e: ChangeEvent<HTMLSelectElement>): void => {
     const newHour = parseInt(e.target.value, 10);
     onChange(`${pad(newHour)}:${pad(minutes)}`);
   };
   
-  const handleMinuteChange = (e) => {
+  const handleMinuteChange = (e: ChangeEvent<HTMLSelectElement>): void => {
     const newMinute = parseInt(e.target.value, 10);
     onChange(`${pad(hours)}:${pad(newMinute)}`);
   };
@@ -40,7 +47,7 @@ function TimeSelector({ value, onChange, label }) {
   );
 }
 
-function addMinutesToTime(timeStr, minutesToAdd) {
+function addMinutesToTime(timeStr: string, minutesToAdd: number): string {
   const [h, m] = timeStr.split(':').map(Number);
   const total = h * 60 + m + Number(minutesToAdd || 0);
   const nh = Math.floor(total / 60) % 24;
@@ -48,7 +55,7 @@ function addMinutesToTime(timeStr, minutesToAdd) {
   return `${pad(nh)}:${pad(nm)}`;
 }
 
-function buildIso(dateStr, time) {
+function buildIso(dateStr: string, time: string): string {
   const [hours, minutes] = time.split(':').map(Number);
   // Create a date object in local timezone
   // dateStr is in format YYYY-MM-DD, time is in format HH:MM
@@ -57,18 +64,18 @@ function buildIso(dateStr, time) {
   return dt.toISOString();
 }
 
-function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
+function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }: CreateSlotProps) {
   const today = new Date().toISOString().slice(0, 10);
-  const [weekStart, setWeekStart] = useState(getWeekStart(today));
-  const [daySettings, setDaySettings] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [googleStatus, setGoogleStatus] = useState({ connected: undefined, calendar_id: null });
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [busyByDate, setBusyByDate] = useState({});
-  const [busyLoading, setBusyLoading] = useState(false);
-  const [busyError, setBusyError] = useState('');
-  const [createdSlots, setCreatedSlots] = useState([]);
+  const [weekStart, setWeekStart] = useState<string>(getWeekStart(today));
+  const [daySettings, setDaySettings] = useState<Record<string, DaySetting>>({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus>({ connected: false, calendar_id: null });
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  const [busyByDate, setBusyByDate] = useState<Record<string, BusyPeriodWithFlag[]>>({});
+  const [busyLoading, setBusyLoading] = useState<boolean>(false);
+  const [busyError, setBusyError] = useState<string>('');
+  const [createdSlots, setCreatedSlots] = useState<Slot[]>([]);
 
   const weekDays = getWeekDays(weekStart);
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -94,14 +101,14 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
   }, [weekStart]);
 
   // Round time to nearest :00 or :30
-  const roundToHalfHour = (timeStr) => {
+  const roundToHalfHour = (timeStr: string): string => {
     const [h, m] = timeStr.split(':').map(Number);
     const rounded = m < 15 ? 0 : m < 45 ? 30 : 0;
     const hours = m >= 45 ? h + 1 : h;
     return `${pad(hours % 24)}:${pad(rounded)}`;
   };
 
-  const handleTimeChange = (date, slotIndex, field, value) => {
+  const handleTimeChange = (date: string, slotIndex: number, field: keyof TimeSlotConfig, value: string): void => {
     // Value is already in HH:MM format from TimeSelector, just ensure it's valid
     const [h, m] = value.split(':').map(Number);
     const validTime = `${pad(h % 24)}:${pad(m === 0 || m === 30 ? m : 0)}`;
@@ -119,7 +126,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     setDaySettings(settings);
   };
 
-  const updateDaySetting = (date, field, value) => {
+  const updateDaySetting = (date: string, field: keyof DaySetting, value: boolean | TimeSlotConfig[]): void => {
     const current = daySettings[date] || { enabled: false, timeSlots: [] };
     setDaySettings({
       ...daySettings,
@@ -130,7 +137,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     });
   };
 
-  const addTimeSlot = (date) => {
+  const addTimeSlot = (date: string): void => {
     const settings = { ...daySettings };
     const day = settings[date] || { enabled: false, timeSlots: [] };
     const slots = [...(day.timeSlots || [])];
@@ -147,7 +154,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     setDaySettings(settings);
   };
 
-  const removeTimeSlot = (date, slotIndex) => {
+  const removeTimeSlot = (date: string, slotIndex: number): void => {
     const settings = { ...daySettings };
     const day = settings[date] || { enabled: false, timeSlots: [] };
     const slots = [...(day.timeSlots || [])];
@@ -160,8 +167,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     setDaySettings(settings);
   };
 
-  const generateSlots = (start, end, dur) => {
-    const slots = [];
+  const generateSlots = (start: string, end: string, dur: number): DaySlot[] => {
+    const slots: DaySlot[] = [];
     const startRounded = roundToHalfHour(start);
     const endRounded = roundToHalfHour(end);
     
@@ -190,11 +197,11 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     return slots;
   };
 
-  const getSlotsForDay = (date) => {
+  const getSlotsForDay = (date: string): DaySlot[] => {
     const settings = daySettings[date];
     if (!settings || !settings.enabled || !settings.timeSlots || settings.timeSlots.length === 0) return [];
     
-    const allSlots = [];
+    const allSlots: DaySlot[] = [];
     settings.timeSlots.forEach((slotConfig) => {
       const slots = generateSlots(slotConfig.startTime, slotConfig.endTime, slotConfig.duration);
       allSlots.push(...slots);
@@ -202,8 +209,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     return allSlots;
   };
 
-  const getAllSlots = () => {
-    const allSlots = [];
+  const getAllSlots = (): DaySlot[] => {
+    const allSlots: DaySlot[] = [];
     weekDays.forEach((date) => {
       const daySlots = getSlotsForDay(date);
       daySlots.forEach((slot) => {
@@ -218,10 +225,10 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
 
   // Initial load: fetch Google status and slots on mount
   useEffect(() => {
-    const initLoad = async () => {
+    const initLoad = async (): Promise<void> => {
       // Fetch Google status and slots in parallel
       const [statusRes, slots] = await Promise.all([
-        axios.get('/api/google/status').catch(() => ({ data: { connected: false, calendar_id: null } })),
+        axios.get<GoogleCalendarStatus>('/api/google/status').catch(() => ({ data: { connected: false, calendar_id: null } })),
         fetchWeekSlots(weekStart)
       ]);
       
@@ -246,7 +253,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     // Skip if not initialized yet (handled by initLoad)
     if (!isInitialized) return;
     
-    const loadWeekData = async () => {
+    const loadWeekData = async (): Promise<void> => {
       // Always fetch slots first
       const slots = await fetchWeekSlots(weekStart);
       
@@ -264,8 +271,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart, googleStatus.connected, slotsRefreshTrigger, isInitialized]);
 
-  const updateBusyBlocksWithSlots = (googleBusy, slotsToUse = null) => {
-    const combined = { ...googleBusy };
+  const updateBusyBlocksWithSlots = (googleBusy: Record<string, BusyPeriodWithFlag[]>, slotsToUse: Slot[] | null = null): void => {
+    const combined: Record<string, BusyPeriodWithFlag[]> = { ...googleBusy };
     
     // Use provided slots or fall back to state
     const slots = slotsToUse !== null ? slotsToUse : createdSlots;
@@ -273,7 +280,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     // Add created slots to the busy blocks
     if (slots && slots.length > 0) {
       // Group slots by date first to see what we're working with
-      const slotsByDate = {};
+      const slotsByDate: Record<string, Slot[]> = {};
       slots.forEach((slot) => {
         if (!slot.start_time || !slot.end_time) {
           console.warn('Invalid slot:', slot);
@@ -306,26 +313,22 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     setBusyByDate(combined);
   };
 
-  // Note: We don't need a separate useEffect for createdSlots anymore
-  // because slots are now passed directly to updateBusyBlocksWithSlots/fetchWeekBusy
-  // This prevents race conditions and ensures slots are displayed when fetched
-
-  const fetchGoogleStatus = async () => {
+  const fetchGoogleStatus = async (): Promise<void> => {
     try {
-      const res = await axios.get('/api/google/status');
+      const res = await axios.get<GoogleCalendarStatus>('/api/google/status');
       setGoogleStatus(res.data);
     } catch (err) {
       // ignore
     }
   };
 
-  const fetchWeekSlots = async (weekStartDate) => {
+  const fetchWeekSlots = async (weekStartDate: string): Promise<Slot[]> => {
     try {
       const days = getWeekDays(weekStartDate);
       const weekStart = new Date(days[0] + 'T00:00:00');
       const weekEnd = new Date(days[6] + 'T23:59:59.999');
       
-      const response = await axios.get('/api/slots');
+      const response = await axios.get<Slot[]>('/api/slots');
       const allSlots = response.data || [];
       
       // Filter slots that fall within the current week
@@ -344,7 +347,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     }
   };
 
-  const fetchWeekBusy = async (weekStartDate, slotsToMerge = null) => {
+  const fetchWeekBusy = async (weekStartDate: string, slotsToMerge: Slot[] | null = null): Promise<void> => {
     try {
       setBusyLoading(true);
       setBusyError('');
@@ -352,7 +355,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
       const responses = await Promise.all(
         days.map((d) =>
           axios
-            .get('/api/google/busy', { params: { date: d } })
+            .get<{ busy: BusyPeriod[] }>('/api/google/busy', { params: { date: d } })
             .then((res) => ({ date: d, busy: res.data.busy || [] }))
             .catch((err) => {
               console.error(`Error fetching busy times for ${d}:`, err);
@@ -360,7 +363,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
             })
         )
       );
-      const map = {};
+      const map: Record<string, BusyPeriodWithFlag[]> = {};
       responses.forEach((r) => {
         // Mark Google Calendar busy blocks so we can distinguish them from created slots
         map[r.date] = (r.busy || []).map(busy => ({
@@ -371,10 +374,10 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
       
       // Merge with created slots - use provided slots or current state
       const slots = slotsToMerge !== null ? slotsToMerge : createdSlots;
-      const combined = { ...map };
+      const combined: Record<string, BusyPeriodWithFlag[]> = { ...map };
       
       // Group slots by date to ensure all are added
-      const slotsByDate = {};
+      const slotsByDate: Record<string, Slot[]> = {};
       slots.forEach((slot) => {
         if (!slot.start_time || !slot.end_time) return;
         // Get the date in local timezone, not UTC
@@ -404,16 +407,16 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
       });
       
       setBusyByDate(combined);
-    } catch (err) {
+    } catch (err: any) {
       setBusyError(err.response?.data?.error || 'Failed to load busy times');
     } finally {
       setBusyLoading(false);
     }
   };
 
-  const connectGoogle = async () => {
+  const connectGoogle = async (): Promise<void> => {
     try {
-      const res = await axios.get('/api/google/auth');
+      const res = await axios.get<{ url: string }>('/api/google/auth');
       const url = res.data.url;
       const popup = window.open(url, '_blank', 'width=500,height=700');
       const poll = setInterval(async () => {
@@ -431,7 +434,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
   };
 
   // Check if a time range overlaps with any busy blocks
-  const checkOverlap = (slotStart, slotEnd, busyBlocks) => {
+  const checkOverlap = (slotStart: string, slotEnd: string, busyBlocks: BusyPeriodWithFlag[]): boolean => {
     if (!busyBlocks || busyBlocks.length === 0) return false;
     
     const slotStartTime = new Date(slotStart).getTime();
@@ -446,7 +449,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -461,9 +464,10 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
       }
 
       // Check for overlaps with existing slots and Google Calendar busy times
-      const overlappingSlots = [];
+      const overlappingSlots: string[] = [];
       
       allSlots.forEach((slot) => {
+        if (!slot.date) return;
         const slotDate = slot.date;
         const slotStart = buildIso(slot.date, slot.start);
         const slotEnd = buildIso(slot.date, slot.end);
@@ -507,8 +511,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
       }
 
       const slotsPayload = allSlots.map((slot) => ({
-        start_time: buildIso(slot.date, slot.start),
-        end_time: buildIso(slot.date, slot.end),
+        start_time: buildIso(slot.date!, slot.start),
+        end_time: buildIso(slot.date!, slot.end),
         duration_minutes: Number(slot.duration)
       }));
 
@@ -518,7 +522,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
         console.log('Last slot:', slotsPayload[slotsPayload.length - 1]);
       }
 
-      const response = await axios.post('/api/slots/batch', { slots: slotsPayload });
+      const response = await axios.post<{ slots: Slot[] }>('/api/slots/batch', { slots: slotsPayload });
       
       if (response.data?.slots) {
         console.log('Created slots:', response.data.slots.length);
@@ -536,9 +540,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
         }
       }
 
-
       // Reset all day settings
-      const resetSettings = {};
+      const resetSettings: Record<string, DaySetting> = {};
       weekDays.forEach((date) => {
         resetSettings[date] = {
           enabled: false,
@@ -547,7 +550,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
       });
       setDaySettings(resetSettings);
       setError('');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Batch create error:', err);
       const errorMsg = err.response?.data?.error || err.message || 'Failed to create slot';
       setError(errorMsg);
@@ -729,7 +732,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }) {
   );
 }
 
-function getWeekStart(dateStr) {
+function getWeekStart(dateStr: string): string {
   const d = new Date(dateStr);
   const day = d.getDay(); // 0-6 (Sun-Sat)
   const diff = d.getDate() - day + 1; // start Monday
@@ -738,10 +741,10 @@ function getWeekStart(dateStr) {
   return monday.toISOString().slice(0, 10);
 }
 
-function getWeekDays(weekStartStr) {
-  const days = [];
+function getWeekDays(weekStartStr: string): string[] {
+  const days: string[] = [];
   const start = new Date(weekStartStr);
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0;  i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     days.push(d.toISOString().slice(0, 10));
@@ -749,18 +752,20 @@ function getWeekDays(weekStartStr) {
   return days;
 }
 
-function shiftWeek(weekStartStr, delta) {
+function shiftWeek(weekStartStr: string, delta: number): string {
   const d = new Date(weekStartStr);
   d.setDate(d.getDate() + delta * 7);
   return d.toISOString().slice(0, 10);
 }
 
-function formatWeekRange(weekStartStr) {
+function formatWeekRange(weekStartStr: string): string {
   const start = new Date(weekStartStr);
   const end = new Date(weekStartStr);
   end.setDate(end.getDate() + 6);
-  const opts = { month: 'short', day: 'numeric' };
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
   return `${start.toLocaleDateString(undefined, opts)} - ${end.toLocaleDateString(undefined, opts)}`;
 }
 
 export default CreateSlot;
+
+

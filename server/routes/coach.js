@@ -113,5 +113,74 @@ router.get('/bookings', authenticateToken, async (req, res) => {
   }
 });
 
+// Get coach settings
+router.get('/settings', authenticateToken, async (req, res) => {
+  try {
+    const coach = await get(
+      'SELECT timezone, daily_booking_limit, language FROM coaches WHERE id = ?',
+      [req.user.id]
+    );
+    if (!coach) {
+      return res.status(404).json({ error: 'Coach not found' });
+    }
+    res.json({
+      timezone: coach.timezone || 'America/Los_Angeles',
+      daily_booking_limit: coach.daily_booking_limit,
+      language: coach.language || 'en'
+    });
+  } catch (error) {
+    console.error('Error fetching coach settings:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update coach settings
+router.put('/settings', authenticateToken, async (req, res) => {
+  try {
+    const { timezone, daily_booking_limit, language } = req.body;
+    
+    // Validate timezone
+    if (timezone && !Intl.supportedValuesOf('timeZone').includes(timezone)) {
+      return res.status(400).json({ error: 'Invalid timezone' });
+    }
+    
+    // Validate language
+    if (language && !['en', 'zh-TW'].includes(language)) {
+      return res.status(400).json({ error: 'Invalid language. Supported: en, zh-TW' });
+    }
+    
+    // Validate daily limit
+    if (daily_booking_limit !== null && daily_booking_limit !== undefined) {
+      const limit = parseInt(daily_booking_limit, 10);
+      if (isNaN(limit) || limit < 1) {
+        return res.status(400).json({ error: 'Daily booking limit must be a positive number' });
+      }
+    }
+    
+    await run(
+      `UPDATE coaches 
+       SET timezone = COALESCE(?, timezone),
+           daily_booking_limit = ?,
+           language = COALESCE(?, language)
+       WHERE id = ?`,
+      [timezone || null, daily_booking_limit !== undefined ? daily_booking_limit : null, language || null, req.user.id]
+    );
+    
+    const updated = await get(
+      'SELECT timezone, daily_booking_limit, language FROM coaches WHERE id = ?',
+      [req.user.id]
+    );
+    
+    res.json({
+      timezone: updated.timezone || 'America/Los_Angeles',
+      daily_booking_limit: updated.daily_booking_limit,
+      language: updated.language || 'en'
+    });
+  } catch (error) {
+    console.error('Error updating coach settings:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { SlotsListProps, Slot, SlotEditData, BookingLinkResponse } from '../types';
 import './SlotsList.css';
 
-function pad(value) {
+function pad(value: number): string {
   return value.toString().padStart(2, '0');
 }
 
-function formatDateTimeForInput(dateString) {
+interface DateTimeInput {
+  date: string;
+  time: string;
+}
+
+function formatDateTimeForInput(dateString: string): DateTimeInput {
   const date = new Date(dateString);
   const year = date.getFullYear();
   const month = pad(date.getMonth() + 1);
@@ -19,17 +25,17 @@ function formatDateTimeForInput(dateString) {
   };
 }
 
-function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
-  const [deleting, setDeleting] = useState({});
-  const [editing, setEditing] = useState({});
-  const [editData, setEditData] = useState({});
-  const [saving, setSaving] = useState({});
-  const [coachBookingLink, setCoachBookingLink] = useState(null);
-  const [linkLoading, setLinkLoading] = useState(true);
-  const [linkError, setLinkError] = useState(null);
+function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
+  const [deleting, setDeleting] = useState<Record<number, boolean>>({});
+  const [editing, setEditing] = useState<Record<number, boolean>>({});
+  const [editData, setEditData] = useState<Record<number, SlotEditData>>({});
+  const [saving, setSaving] = useState<Record<number, boolean>>({});
+  const [coachBookingLink, setCoachBookingLink] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState<boolean>(true);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchBookingLink = async () => {
+    const fetchBookingLink = async (): Promise<void> => {
       // Small delay to ensure auth context is ready
       await new Promise(resolve => setTimeout(resolve, 100));
       
@@ -46,7 +52,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
         }
 
         // Use axios with explicit headers
-        const response = await axios.get('/api/coach/booking-link', {
+        const response = await axios.get<BookingLinkResponse>('/api/coach/booking-link', {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -57,7 +63,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
         } else {
           setLinkError('Booking link not found');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch booking link:', err);
         console.error('Error details:', err.response);
         
@@ -94,7 +100,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     fetchBookingLink();
   }, []);
 
-  const handleDelete = async (slotId) => {
+  const handleDelete = async (slotId: number): Promise<void> => {
     if (!confirm('Are you sure you want to delete this slot?')) return;
 
     setDeleting({ ...deleting, [slotId]: true });
@@ -108,7 +114,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     }
   };
 
-  const handleEdit = (slot) => {
+  const handleEdit = (slot: Slot): void => {
     const start = formatDateTimeForInput(slot.start_time);
     const end = formatDateTimeForInput(slot.end_time);
     setEditing({ ...editing, [slot.id]: true });
@@ -123,7 +129,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     });
   };
 
-  const handleCancelEdit = (slotId) => {
+  const handleCancelEdit = (slotId: number): void => {
     const newEditing = { ...editing };
     const newEditData = { ...editData };
     delete newEditing[slotId];
@@ -132,7 +138,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     setEditData(newEditData);
   };
 
-  const handleSaveEdit = async (slotId) => {
+  const handleSaveEdit = async (slotId: number): Promise<void> => {
     const data = editData[slotId];
     if (!data) return;
 
@@ -142,10 +148,10 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
 
     setSaving({ ...saving, [slotId]: true });
     try {
-      const response = await axios.put(`/api/slots/${slotId}`, {
+      const response = await axios.put<Slot>(`/api/slots/${slotId}`, {
         start_time: startDateTime,
         end_time: endDateTime,
-        duration_minutes: parseInt(data.duration_minutes, 10)
+        duration_minutes: parseInt(String(data.duration_minutes), 10)
       });
       
       if (onSlotUpdated) {
@@ -153,14 +159,14 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
       }
       
       handleCancelEdit(slotId);
-    } catch (error) {
+    } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to update slot');
     } finally {
       setSaving({ ...saving, [slotId]: false });
     }
   };
 
-  const handleEditChange = (slotId, field, value) => {
+  const handleEditChange = (slotId: number, field: keyof SlotEditData, value: string | number): void => {
     setEditData({
       ...editData,
       [slotId]: {
@@ -170,7 +176,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     });
   };
 
-  const formatDateTime = (dateString) => {
+  const formatDateTime = (dateString: string): string => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
       month: 'short',
@@ -181,7 +187,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     });
   };
 
-  const copyBookingLink = () => {
+  const copyBookingLink = (): void => {
     if (coachBookingLink) {
       const fullLink = `${window.location.origin}/book/${coachBookingLink}`;
       navigator.clipboard.writeText(fullLink);
@@ -189,7 +195,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
     }
   };
 
-  const renderBookingLink = () => (
+  const renderBookingLink = (): JSX.Element => (
     <div className="booking-link-section-top">
       <div className="booking-link-display">
         <span className="booking-link-label">Your Booking Link:</span>
@@ -209,7 +215,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
                       setLinkLoading(false);
                       return;
                     }
-                    const res = await axios.get('/api/coach/booking-link', {
+                    const res = await axios.get<BookingLinkResponse>('/api/coach/booking-link', {
                       headers: {
                         Authorization: `Bearer ${token}`
                       }
@@ -219,7 +225,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
                     } else {
                       setLinkError('Booking link not found');
                     }
-                  } catch (err) {
+                  } catch (err: any) {
                     console.error('Retry failed:', err);
                     const errorMsg = err.response?.data?.error || err.message || 'Failed to load booking link';
                     if (err.response?.status === 404) {
@@ -349,7 +355,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
                     <button
                       onClick={() => handleEdit(slot)}
                       className="edit-btn-compact"
-                      disabled={slot.is_booked}
+                      disabled={!!slot.is_booked}
                       title="Edit slot"
                     >
                       ✏️
@@ -357,7 +363,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
                     <button
                       onClick={() => handleDelete(slot.id)}
                       className="delete-btn-compact"
-                      disabled={deleting[slot.id] || slot.is_booked}
+                      disabled={!!deleting[slot.id] || !!slot.is_booked}
                       title="Delete slot"
                     >
                       {deleting[slot.id] ? '...' : '🗑️'}
@@ -374,4 +380,5 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }) {
 }
 
 export default SlotsList;
+
 

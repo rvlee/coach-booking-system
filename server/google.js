@@ -4,7 +4,9 @@ import { get, run } from './database.js';
 const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
-  GOOGLE_REDIRECT_URI = 'http://localhost:3001/api/google/callback'
+  GOOGLE_REDIRECT_URI = process.env.FRONTEND_URL 
+    ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/google/callback`
+    : 'http://localhost:3001/api/google/callback'
 } = process.env;
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -141,19 +143,97 @@ export async function updateEvent(client, calendarId, eventId, slot, bookingLink
   });
 }
 
-export async function updateEventWithBooking(client, calendarId, eventId, booking) {
+export async function updateEventWithBooking(client, calendarId, eventId, booking, allBookings = null, coachEmail = null, timeUpdate = null) {
   const calendar = google.calendar({ version: 'v3', auth: client });
+  
+  // Use allBookings if provided (for shared classes), otherwise just use the single booking
+  const bookings = allBookings || [booking];
+  
+  // Build attendees list from all bookings (clients only, not the coach)
+  // The coach is automatically the organizer since the event is on their calendar
+  const attendees = bookings
+    .filter(b => b.client_email)
+    .map(b => ({
+      email: b.client_email,
+      displayName: b.client_name,
+      responseStatus: 'accepted'
+    }));
+  
+  // Determine event title based on booking status
+  let eventTitle;
+  if (bookings.length > 1) {
+    const names = bookings.map(b => b.client_name).join(' & ');
+    eventTitle = `Booked: ${names} (Shared Class)`;
+  } else {
+    eventTitle = `Booked: ${booking.client_name}`;
+  }
+  
+  // Build description with all booking details
+  const bookingDetails = bookings.map(b => 
+    `Client: ${b.client_name} (${b.client_email})${b.client_phone ? ` - ${b.client_phone}` : ''}${b.notes ? `\nNotes: ${b.notes}` : ''}`
+  ).join('\n\n');
+  
+  // Get the current event to preserve organizer information
+  let currentEvent;
+  try {
+    currentEvent = await calendar.events.get({
+      calendarId,
+      eventId
+    });
+  } catch (err) {
+    console.error('Error fetching current event:', err);
+  }
+  
+  // Prepare request body - ensure organizer is preserved
+  const requestBody = {
+    summary: eventTitle,
+    description: bookingDetails,
+    attendees: attendees.length > 0 ? attendees : undefined,
+    // Update time if provided (for shared classes extended to 90 minutes)
+    ...(timeUpdate ? {
+      start: { dateTime: timeUpdate.start_time },
+      end: { dateTime: timeUpdate.end_time }
+    } : {}),
+    // Preserve organizer if event already exists
+    // Note: organizer cannot be changed via API, it's always the calendar owner
+    // But we ensure the event stays on the coach's calendar
+  };
+  
+  // If we have coach email and current event, ensure organizer email matches
+  if (coachEmail && currentEvent?.data?.organizer?.email) {
+    // Verify organizer is the coach (should always be true since event is on coach's calendar)
+    if (currentEvent.data.organizer.email !== coachEmail) {
+      console.warn(`Event organizer (${currentEvent.data.organizer.email}) does not match coach email (${coachEmail})`);
+    }
+  }
+  
+  // Update the event with all attendees and time (if needed)
+  // sendUpdates: 'all' will send notifications to:
+  // - All attendees (both clients for shared classes)
+  // - The organizer (coach)
+  // This ensures everyone gets notified when the second person books
   await calendar.events.patch({
     calendarId,
     eventId,
-    requestBody: {
-      summary: `Booked: ${booking.client_name}`,
-      description: `Client: ${booking.client_name} (${booking.client_email})\nNotes: ${booking.notes || ''}`,
-      attendees: booking.client_email
-        ? [{ email: booking.client_email, displayName: booking.client_name }]
-        : undefined
-    }
+    requestBody,
+    // Send updates to all attendees and the organizer
+    // This is especially important for shared classes when the second person books
+    // 'all' means: send updates to all attendees AND the organizer (coach)
+    // Everyone will receive an email notification about the event update
+    sendUpdates: attendees.length > 0 ? 'all' : undefined
   });
+  
+  if (attendees.length > 0) {
+    const attendeeEmails = attendees.map(a => a.email).join(', ');
+    console.log(`Updated Google Calendar event ${eventId} on coach's calendar (${calendarId}).`);
+    console.log(`  - Event title: ${eventTitle}`);
+    console.log(`  - Attendees (${attendees.length}): ${attendeeEmails}`);
+    console.log(`  - Sent updates to all attendees and organizer (coach)`);
+    
+    if (bookings.length > 1) {
+      console.log(`  - Shared class: Both clients have been added as attendees`);
+    }
+  }
 }
 
 export async function getBusy(client, calendarId, dayIso) {

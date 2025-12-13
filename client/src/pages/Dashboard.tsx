@@ -1,28 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import axios from 'axios';
 import SlotsList from '../components/SlotsList';
 import CreateSlot from '../components/CreateSlot';
 import BookingsList from '../components/BookingsList';
+import Settings from './Settings';
+import { Slot, Booking } from '../types';
 import './Dashboard.css';
 
 function Dashboard() {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('slots');
-  const [slots, setSlots] = useState([]);
-  const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [slotsRefreshTrigger, setSlotsRefreshTrigger] = useState(0);
+  const { t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<'slots' | 'bookings' | 'settings'>('slots');
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [slotsRefreshTrigger, setSlotsRefreshTrigger] = useState<number>(0);
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (): Promise<void> => {
     try {
       const [slotsRes, bookingsRes] = await Promise.all([
-        axios.get('/api/slots'),
-        axios.get('/api/coach/bookings')
+        axios.get<Slot[]>('/api/slots'),
+        axios.get<Booking[]>('/api/coach/bookings')
       ]);
       setSlots(slotsRes.data);
       setBookings(bookingsRes.data);
@@ -33,27 +37,27 @@ function Dashboard() {
     }
   };
 
-  const handleSlotCreated = (newSlot) => {
+  const handleSlotCreated = (newSlot: Slot): void => {
     setSlots((prevSlots) => [...prevSlots, newSlot]);
   };
 
-  const handleSlotsCreated = (newSlots) => {
+  const handleSlotsCreated = (newSlots: Slot | Slot[]): void => {
     if (Array.isArray(newSlots)) {
       setSlots((prevSlots) => [...prevSlots, ...newSlots]);
     } else {
       handleSlotCreated(newSlots);
     }
-    setSlotsRefreshTrigger(prev => prev + 1); // Trigger calendar refresh
+    setSlotsRefreshTrigger(prev => prev + 1);
   };
 
-  const handleSlotDeleted = (slotId) => {
+  const handleSlotDeleted = (slotId: number): void => {
     setSlots(slots.filter(s => s.id !== slotId));
-    setSlotsRefreshTrigger(prev => prev + 1); // Trigger calendar refresh
+    setSlotsRefreshTrigger(prev => prev + 1);
   };
 
-  const handleSlotUpdated = (updatedSlot) => {
+  const handleSlotUpdated = (updatedSlot: Slot): void => {
     setSlots(slots.map(s => s.id === updatedSlot.id ? updatedSlot : s));
-    setSlotsRefreshTrigger(prev => prev + 1); // Trigger calendar refresh
+    setSlotsRefreshTrigger(prev => prev + 1);
   };
 
   if (loading) {
@@ -64,24 +68,33 @@ function Dashboard() {
     <div className="dashboard">
       <header className="dashboard-header">
         <div>
-          <h1>Welcome, {user?.name}</h1>
-          <p className="dashboard-subtitle">Manage your booking slots</p>
+          <h1>{t.dashboard.welcome}, {user?.name}</h1>
+          <p className="dashboard-subtitle">{t.dashboard.subtitle}</p>
         </div>
-        <button onClick={logout} className="logout-btn">Logout</button>
+        <button onClick={logout} className="logout-btn">{t.dashboard.logout}</button>
       </header>
 
       <div className="dashboard-tabs">
         <button
           className={activeTab === 'slots' ? 'active' : ''}
           onClick={() => setActiveTab('slots')}
+          type="button"
         >
-          Slots
+          {t.dashboard.slots}
         </button>
         <button
           className={activeTab === 'bookings' ? 'active' : ''}
           onClick={() => setActiveTab('bookings')}
+          type="button"
         >
-          Bookings
+          {t.dashboard.bookings}
+        </button>
+        <button
+          className={activeTab === 'settings' ? 'active' : ''}
+          onClick={() => setActiveTab('settings')}
+          type="button"
+        >
+          {t.dashboard.settings}
         </button>
       </div>
 
@@ -102,6 +115,10 @@ function Dashboard() {
 
         {activeTab === 'bookings' && (
           <BookingsList bookings={bookings} />
+        )}
+
+        {activeTab === 'settings' && (
+          <Settings />
         )}
       </div>
     </div>

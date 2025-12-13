@@ -72,7 +72,7 @@ router.post('/batch', authenticateToken, async (req, res) => {
       try {
         if (auth && calendarId) {
           const { client } = auth;
-          const origin = req.headers.origin || 'http://localhost:3000';
+          const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
           const eventId = await createEvent(client, calendarId, slot, `${origin}/book/${bookingLink}`);
           await run('UPDATE slots SET google_event_id = ? WHERE id = ?', [eventId, slot.id]);
           slot = await get('SELECT * FROM slots WHERE id = ?', [slot.id]);
@@ -247,7 +247,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         if (auth) {
           const { client, tokenRow } = auth;
           const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
-          const origin = req.headers.origin || 'http://localhost:3000';
+          const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
           await updateEvent(client, calendarId, updatedSlot.google_event_id, updatedSlot, `${origin}/book/${updatedSlot.booking_link}`);
         }
       }

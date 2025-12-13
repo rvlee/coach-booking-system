@@ -1,19 +1,19 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
 function Login() {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState<boolean>(true);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [name, setName] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -34,7 +34,7 @@ function Login() {
       if (result.success) {
         navigate('/dashboard');
       } else {
-        setError(result.error);
+        setError(result.error || 'An error occurred');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -51,12 +51,14 @@ function Login() {
           <button
             className={isLogin ? 'active' : ''}
             onClick={() => setIsLogin(true)}
+            type="button"
           >
             Login
           </button>
           <button
             className={!isLogin ? 'active' : ''}
             onClick={() => setIsLogin(false)}
+            type="button"
           >
             Register
           </button>
@@ -110,4 +112,5 @@ function Login() {
 }
 
 export default Login;
+
 

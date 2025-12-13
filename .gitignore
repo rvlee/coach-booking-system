@@ -1,5 +1,7 @@
 node_modules/
 .env
+.env.local
+.env.production
 *.log
 .DS_Store
 dist/
@@ -9,4 +11,7 @@ build/
 database.sqlite
 .vscode/
 .idea/
+# Production files
+coach-booking-system/server/.env
+coach-booking-system/client/.env
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import { get, all, run } from '../database.js';
-import { getAuthorizedClient, ensureDedicatedCalendar, updateEventWithBooking } from '../google.js';
+import { getAuthorizedClient, ensureDedicatedCalendar, updateEventWithBooking, updateEvent } from '../google.js';
 
 const router = express.Router();
 
@@ -41,7 +41,7 @@ async function pushSubsequentSlots(slotId, minutesToPush, coachId) {
           const { client, tokenRow } = auth;
           const calendarId = tokenRow.calendar_id;
           if (calendarId) {
-            const origin = 'http://localhost:3000';
+            const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
             await updateEvent(client, calendarId, subSlot.google_event_id, {
               start_time: newStart.toISOString(),
               end_time: newEnd.toISOString(),
@@ -70,6 +70,67 @@ router.post('/', async (req, res) => {
     const slot = await get('SELECT * FROM slots WHERE id = ? AND is_available = 1', [slot_id]);
     if (!slot) {
       return res.status(404).json({ error: 'Slot not found or not available' });
+    }
+
+    // Check daily booking limit
+    const coach = await get('SELECT daily_booking_limit, timezone FROM coaches WHERE id = ?', [slot.coach_id]);
+    if (coach && coach.daily_booking_limit !== null) {
+      // Get the date of the slot in the coach's timezone
+      const slotDate = new Date(slot.start_time);
+      const coachTimezone = coach.timezone || 'UTC';
+      
+      // Convert slot date to coach's timezone for day calculation
+      // Get the date string in the coach's timezone (YYYY-MM-DD format)
+      const slotDateInTz = slotDate.toLocaleString('en-US', { 
+        timeZone: coachTimezone, 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit' 
+      });
+      const [month, day, year] = slotDateInTz.split('/');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      // Create start and end of day in coach's timezone
+      const startOfDay = new Date(`${dateStr}T00:00:00`);
+      const endOfDay = new Date(`${dateStr}T23:59:59.999`);
+      
+      // Convert to UTC for database query
+      // We need to account for timezone offset
+      const tzOffset = slotDate.getTimezoneOffset() * 60000; // offset in milliseconds
+      const startUTC = new Date(startOfDay.getTime() - tzOffset);
+      const endUTC = new Date(endOfDay.getTime() - tzOffset);
+      
+      // Count bookings for this coach on this day (in coach's timezone)
+      // We'll count all bookings where the slot start_time falls within the day in coach's timezone
+      const allBookings = await all(
+        `SELECT b.*, s.start_time
+         FROM bookings b
+         JOIN slots s ON b.slot_id = s.id
+         WHERE b.coach_id = ? 
+         AND b.status = 'confirmed'`,
+        [slot.coach_id]
+      );
+      
+      // Filter bookings that fall on the same day in coach's timezone
+      const dayBookings = allBookings.filter((booking) => {
+        const bookingDate = new Date(booking.start_time);
+        const bookingDateInTz = bookingDate.toLocaleString('en-US', { 
+          timeZone: coachTimezone, 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit' 
+        });
+        const [bMonth, bDay, bYear] = bookingDateInTz.split('/');
+        const bDateStr = `${bYear}-${bMonth}-${bDay}`;
+        return bDateStr === dateStr;
+      });
+      
+      const bookingCount = dayBookings.length;
+      if (bookingCount >= coach.daily_booking_limit) {
+        return res.status(400).json({ 
+          error: `Daily booking limit reached. Maximum ${coach.daily_booking_limit} bookings per day.` 
+        });
+      }
     }
 
     // Check if slot is already booked
@@ -124,28 +185,6 @@ router.post('/', async (req, res) => {
 
       // Push all subsequent slots by 30 minutes
       await pushSubsequentSlots(slot_id, 30, slot.coach_id);
-
-      // Update Google Calendar event if exists
-      try {
-        if (slot.google_event_id) {
-          const auth = await getAuthorizedClient(slot.coach_id);
-          if (auth) {
-            const { client, tokenRow } = auth;
-            const calendarId = tokenRow.calendar_id;
-            if (calendarId) {
-              const origin = 'http://localhost:3000';
-              await updateEvent(client, calendarId, slot.google_event_id, {
-                start_time: updatedSlot.start_time,
-                end_time: updatedSlot.end_time,
-                duration_minutes: 90,
-                id: updatedSlot.id
-              }, `${origin}/book/${slot.booking_link}`);
-            }
-          }
-        }
-      } catch (syncErr) {
-        console.error('Google Calendar update failed for extended slot:', syncErr);
-      }
     }
 
     // Create booking
@@ -164,18 +203,53 @@ router.post('/', async (req, res) => {
       );
     }
 
-    // Update Google Calendar event if exists
+    // Update Google Calendar event if exists - add all clients as attendees and send updates to everyone
+    // The event is on the coach's calendar, so the coach is automatically the organizer/host
+    // When second person books (shared class), this will update the event with both clients
     try {
       if (updatedSlot.google_event_id) {
         const auth = await getAuthorizedClient(slot.coach_id);
         if (auth) {
           const { client, tokenRow } = auth;
           const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
-          await updateEventWithBooking(client, calendarId, updatedSlot.google_event_id, booking);
+          
+          // Get coach email to verify organizer
+          const coach = await get('SELECT email FROM coaches WHERE id = ?', [slot.coach_id]);
+          
+          // Get all bookings for this slot to include all attendees (for shared classes)
+          // This will include both clients when the second person books
+          const allSlotBookings = await all(
+            'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
+            [slot_id]
+          );
+          
+          console.log(`Updating Google Calendar event for slot ${slot_id} with ${allSlotBookings.length} booking(s):`, 
+            allSlotBookings.map(b => `${b.client_name} (${b.client_email})`).join(', '));
+          
+          // If this is a shared class (second booking), also update the event time to 90 minutes
+          const needsTimeUpdate = isShared && updatedSlot.duration_minutes === 90;
+          
+          // Update event with all bookings so all clients receive invites
+          // For shared classes, this will:
+          // 1. Add both clients as attendees
+          // 2. Update event title to show both names
+          // 3. Update end time to 90 minutes (if needed)
+          // 4. Send updates to all attendees (both clients) AND the coach
+          // The coach remains the organizer since the event is on their calendar
+          await updateEventWithBooking(
+            client, 
+            calendarId, 
+            updatedSlot.google_event_id, 
+            booking, 
+            allSlotBookings, 
+            coach?.email,
+            needsTimeUpdate ? { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time } : null
+          );
         }
       }
     } catch (syncErr) {
       console.error('Google Calendar update failed on booking:', syncErr);
+      // Don't fail the booking if calendar update fails
     }
 
     res.status(201).json(booking);

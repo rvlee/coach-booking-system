@@ -1,7 +1,9 @@
+import { Booking, BookingsListProps } from '../types';
 import './BookingsList.css';
 
-function BookingsList({ bookings }) {
-  const formatDateTime = (dateString) => {
+function BookingsList({ bookings }: BookingsListProps) {
+  const formatDateTime = (dateString?: string): string => {
+    if (!dateString) return '';
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
       month: 'short',
@@ -24,7 +26,7 @@ function BookingsList({ bookings }) {
     <div className="bookings-list">
       <h2>All Bookings</h2>
       <div className="bookings-grid">
-        {bookings.map((booking) => (
+        {bookings.map((booking: Booking) => (
           <div key={booking.id} className="booking-card">
             <div className="booking-header">
               <h3>{booking.client_name}</h3>
@@ -82,4 +84,5 @@ function BookingsList({ bookings }) {
 }
 
 export default BookingsList;
+
 

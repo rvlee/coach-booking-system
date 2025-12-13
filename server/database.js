@@ -61,9 +61,17 @@ export function initDatabase() {
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
+      timezone TEXT DEFAULT 'America/Los_Angeles',
+      daily_booking_limit INTEGER DEFAULT NULL,
+      language TEXT DEFAULT 'en',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  
+  // Add settings columns if they don't exist (for existing databases)
+  db.run(`ALTER TABLE coaches ADD COLUMN timezone TEXT DEFAULT 'America/Los_Angeles'`, () => {});
+  db.run(`ALTER TABLE coaches ADD COLUMN daily_booking_limit INTEGER DEFAULT NULL`, () => {});
+  db.run(`ALTER TABLE coaches ADD COLUMN language TEXT DEFAULT 'en'`, () => {});
 
   // Slots table
   db.run(`

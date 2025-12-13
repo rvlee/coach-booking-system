@@ -43,6 +43,14 @@ This will start:
 - Backend server on `http://localhost:3001`
 - Frontend development server on `http://localhost:3000`
 
+3. Access the application:
+- Open your browser to: **http://localhost:3000**
+- You'll be auto-logged in with default credentials (or register a new account)
+
+## Testing
+
+See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for comprehensive testing instructions.
+
 ### Manual Setup
 
 If you prefer to set up manually:
