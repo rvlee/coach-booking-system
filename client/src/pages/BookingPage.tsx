@@ -196,44 +196,45 @@ function BookingPage() {
             ) : (
               <>
                 {slots.length > 0 && (
-                  <div className="slots-selection">
-                    <h3>Select a Time Slot</h3>
-                    <div className="slots-grid">
-                      {slots
-                        .filter((s) => {
-                          const bookingCount = s.booking_count ?? 0;
-                          const shareable = s.shareable_bookings ?? 0;
-                          const shared = s.shared_bookings ?? 0;
-                          // Mirror backend rules: show if no bookings, or 1 booking that is willing_to_share and not yet shared
-                          return bookingCount === 0 || (bookingCount === 1 && shareable === 1 && shared === 0);
-                        })
-                        .map((s) => {
-                          const isShareable =
-                            (s.booking_count ?? 0) === 1 &&
-                            (s.shareable_bookings ?? 0) === 1 &&
-                            (s.shared_bookings ?? 0) === 0;
+                  <>
+                    <div className="slots-selection">
+                      <h3>Select a Time Slot</h3>
+                      <div className="slots-grid">
+                        {slots
+                          .filter((s) => {
+                            const bookingCount = s.booking_count ?? 0;
+                            const shareable = s.shareable_bookings ?? 0;
+                            const shared = s.shared_bookings ?? 0;
+                            // Mirror backend rules: show if no bookings, or 1 booking that is willing_to_share and not yet shared
+                            return bookingCount === 0 || (bookingCount === 1 && shareable === 1 && shared === 0);
+                          })
+                          .map((s) => {
+                            const isShareable =
+                              (s.booking_count ?? 0) === 1 &&
+                              (s.shareable_bookings ?? 0) === 1 &&
+                              (s.shared_bookings ?? 0) === 0;
 
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              className={`slot-option ${selectedSlotId === s.id ? 'selected' : ''} ${isShareable ? 'shareable' : ''}`}
-                              onClick={() => setSelectedSlotId(s.id)}
-                            >
-                              <div className="slot-option-time">{formatDateTime(s.start_time)}</div>
-                              <div className="slot-option-duration">{s.duration_minutes} min</div>
-                              {isShareable && (
-                                <div className="slot-option-shareable">
-                                  Shared-friendly (1 spot taken)
-                                </div>
-                              )}
-                            </button>
-                          );
-                        })}
+                            return (
+                              <button
+                                key={s.id}
+                                type="button"
+                                className={`slot-option ${selectedSlotId === s.id ? 'selected' : ''} ${isShareable ? 'shareable' : ''}`}
+                                onClick={() => setSelectedSlotId(s.id)}
+                              >
+                                <div className="slot-option-time">{formatDateTime(s.start_time)}</div>
+                                <div className="slot-option-duration">{s.duration_minutes} min</div>
+                                {isShareable && (
+                                  <div className="slot-option-shareable">
+                                    Shared-friendly (1 spot taken)
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                      </div>
                     </div>
-                  </div>
 
-                <form onSubmit={handleSubmit} className="booking-form">
+                    <form onSubmit={handleSubmit} className="booking-form">
                   <div className="form-group">
                     <label>Full Name *</label>
                     <input
@@ -295,7 +296,9 @@ function BookingPage() {
                   <button type="submit" className="submit-booking-btn" disabled={submitting || !selectedSlotId}>
                     {submitting ? 'Booking...' : 'Confirm Booking'}
                   </button>
-                </form>
+                    </form>
+                  </>
+                )}
               </>
             )}
           </>
