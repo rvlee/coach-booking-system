@@ -6,7 +6,8 @@ const {
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI = process.env.FRONTEND_URL 
     ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/google/callback`
-    : 'http://localhost:3001/api/google/callback'
+    : 'http://localhost:3001/api/google/callback',
+  GOOGLE_AUTH_REDIRECT_URI // Separate redirect URI for login/authentication
 } = process.env;
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
@@ -28,11 +29,24 @@ export function getAuthUrl(state = '') {
 }
 
 export function getLoginAuthUrl() {
-  const oauth2Client = createOAuthClient();
-  // Use different redirect URI for login
-  const loginRedirectUri = process.env.FRONTEND_URL 
-    ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/google/auth/callback`
-    : 'http://localhost:3001/api/google/auth/callback';
+  if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+    throw new Error('Google OAuth credentials are missing. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
+  }
+
+  // Use separate redirect URI for login/authentication
+  // This should be /api/google/auth/callback (different from calendar callback at /api/google/callback)
+  // If GOOGLE_REDIRECT_URI is set, convert it to the auth callback URI
+  let loginRedirectUri;
+  if (process.env.GOOGLE_REDIRECT_URI) {
+    // Convert calendar callback URI to auth callback URI
+    // e.g., https://backend.railway.app/api/google/callback -> https://backend.railway.app/api/google/auth/callback
+    loginRedirectUri = process.env.GOOGLE_REDIRECT_URI.replace('/api/google/callback', '/api/google/auth/callback');
+  } else {
+    // Default to localhost for development
+    loginRedirectUri = 'http://localhost:3001/api/google/auth/callback';
+  }
+  
+  console.log('Login OAuth redirect URI:', loginRedirectUri);
   
   const loginClient = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, loginRedirectUri);
   return loginClient.generateAuthUrl({

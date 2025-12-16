@@ -18,8 +18,16 @@ const router = express.Router();
 
 // Start OAuth flow for authentication (login/register)
 router.get('/auth/login', (req, res) => {
-  const url = getLoginAuthUrl();
-  res.json({ url });
+  try {
+    const url = getLoginAuthUrl();
+    res.json({ url });
+  } catch (error) {
+    console.error('Error generating Google OAuth URL:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate Google OAuth URL',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 });
 
 // Start OAuth flow for calendar connection (existing)
@@ -34,10 +42,19 @@ router.get('/auth/callback', async (req, res) => {
   if (!code) return res.status(400).send('Missing code');
 
   try {
-    // Use backend redirect URI (must match Google Cloud Console)
-    // For production, use GOOGLE_REDIRECT_URI from env
-    // For development, use localhost backend URL
-    const loginRedirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/google/auth/callback';
+    // Use backend redirect URI for login (must match Google Cloud Console)
+    // This should be /api/google/auth/callback (different from calendar callback)
+    // Convert GOOGLE_REDIRECT_URI from calendar callback to auth callback
+    let loginRedirectUri;
+    if (process.env.GOOGLE_REDIRECT_URI) {
+      // Convert calendar callback URI to auth callback URI
+      // e.g., https://backend.railway.app/api/google/callback -> https://backend.railway.app/api/google/auth/callback
+      loginRedirectUri = process.env.GOOGLE_REDIRECT_URI.replace('/api/google/callback', '/api/google/auth/callback');
+    } else {
+      loginRedirectUri = 'http://localhost:3001/api/google/auth/callback';
+    }
+    
+    console.log('Login callback redirect URI:', loginRedirectUri);
     
     const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
     const loginClient = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, loginRedirectUri);

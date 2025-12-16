@@ -35,6 +35,22 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+// Root path - helpful for checking if server is running
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Coach Booking System API',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      slots: '/api/slots',
+      bookings: '/api/bookings',
+      coach: '/api/coach',
+      google: '/api/google'
+    }
+  });
+});
+
 app.listen(PORT, () => {
   if (process.env.NODE_ENV !== 'production') {
     console.log(`Server running on http://localhost:${PORT}`);
