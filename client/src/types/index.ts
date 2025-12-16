@@ -62,6 +62,7 @@ export interface AuthContextType {
   user: Coach | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithToken: (token: string, coach: Coach) => void;
   logout: () => void;
   loading: boolean;
 }

@@ -21,9 +21,24 @@ export function getAuthUrl(state = '') {
   const oauth2Client = createOAuthClient();
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/calendar'],
+    scope: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
     prompt: 'consent',
     state
+  });
+}
+
+export function getLoginAuthUrl() {
+  const oauth2Client = createOAuthClient();
+  // Use different redirect URI for login
+  const loginRedirectUri = process.env.FRONTEND_URL 
+    ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/google/auth/callback`
+    : 'http://localhost:3001/api/google/auth/callback';
+  
+  const loginClient = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, loginRedirectUri);
+  return loginClient.generateAuthUrl({
+    access_type: 'offline',
+    scope: ['https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile'],
+    prompt: 'consent'
   });
 }
 

@@ -6,19 +6,89 @@ import {
   getAuthorizedClient,
   ensureDedicatedCalendar,
   getBusy,
-  createOAuthClient
+  createOAuthClient,
+  getLoginAuthUrl
 } from '../google.js';
 import { run, get } from '../database.js';
+import { google } from 'googleapis';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Start OAuth flow
+// Start OAuth flow for authentication (login/register)
+router.get('/auth/login', (req, res) => {
+  const url = getLoginAuthUrl();
+  res.json({ url });
+});
+
+// Start OAuth flow for calendar connection (existing)
 router.get('/auth', authenticateToken, async (req, res) => {
   const url = getAuthUrl(String(req.user.id));
   res.json({ url });
 });
 
-// OAuth callback
+// OAuth callback for authentication (login/register)
+router.get('/auth/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).send('Missing code');
+
+  try {
+    // Use backend redirect URI (must match Google Cloud Console)
+    // For production, use GOOGLE_REDIRECT_URI from env
+    // For development, use localhost backend URL
+    const loginRedirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/google/auth/callback';
+    
+    const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
+    const loginClient = new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, loginRedirectUri);
+    const { tokens } = await loginClient.getToken(code);
+    loginClient.setCredentials(tokens);
+
+    // Get user info from Google
+    const oauth2 = google.oauth2({ version: 'v2', auth: loginClient });
+    const { data } = await oauth2.userinfo.get();
+    
+    const googleEmail = data.email;
+    const googleName = data.name || data.email?.split('@')[0] || 'User';
+
+    if (!googleEmail) {
+      return res.status(400).send('Could not get email from Google account');
+    }
+
+    // Find or create coach account
+    let coach = await get('SELECT id, email, name FROM coaches WHERE email = ?', [googleEmail]);
+    
+    if (!coach) {
+      // Create new coach account
+      const result = await run(
+        'INSERT INTO coaches (email, name, password) VALUES (?, ?, ?)',
+        [googleEmail, googleName, null] // No password for Google auth
+      );
+      coach = await get('SELECT id, email, name FROM coaches WHERE id = ?', [result.lastID]);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: coach.id, email: coach.email },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Store Google tokens for calendar access
+    const calendarId = await ensureDedicatedCalendar(loginClient, {});
+    await storeTokens(coach.id, tokens, calendarId);
+
+    // Redirect to frontend with token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}&coach=${encodeURIComponent(JSON.stringify(coach))}`);
+  } catch (err) {
+    console.error('Google OAuth auth callback error:', err);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+  }
+});
+
+// OAuth callback for calendar connection (existing flow)
 router.get('/callback', async (req, res) => {
   const { code } = req.query;
   if (!code) return res.status(400).send('Missing code');

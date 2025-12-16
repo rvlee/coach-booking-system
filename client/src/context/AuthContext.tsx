@@ -71,6 +71,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const loginWithToken = (token: string, coach: Coach): void => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(coach));
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    setUser(coach);
+  };
+
   const logout = (): void => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -82,6 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     login,
     register,
+    loginWithToken,
     logout,
     loading
   };

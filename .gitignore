@@ -15,3 +15,17 @@ database.sqlite
 coach-booking-system/server/.env
 coach-booking-system/client/.env
 
+# Deployment documentation (exclude from repo)
+DEPLOYMENT_STEPS.md
+DEPLOYMENT_ORDER.md
+VERCEL_DEPLOYMENT.md
+RAILWAY_FIX.md
+RAILWAY_ENV_VARIABLES.md
+UPDATE_PROD_CREDENTIALS.md
+GOOGLE_CONSOLE_UPDATES.md
+GOOGLE_OAUTH_PUBLISH.md
+PRODUCTION_DEPLOYMENT.md
+PRODUCTION_CHECKLIST.md
+QUICK_PRODUCTION_GUIDE.md
+PRE_PROD_TWEAKS.md
+
