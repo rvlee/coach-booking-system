@@ -1,6 +1,7 @@
 import express from 'express';
 import { get, all, run } from '../database.js';
 import { getAuthorizedClient, ensureDedicatedCalendar, updateEventWithBooking, updateEvent } from '../google.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -279,6 +280,126 @@ router.get('/:id', async (req, res) => {
     res.json(booking);
   } catch (error) {
     console.error('Error fetching booking:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Delete/Cancel booking
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the booking with slot info
+    const booking = await get(
+      `SELECT b.*, s.start_time, s.end_time, s.duration_minutes, s.google_event_id, s.coach_id
+       FROM bookings b
+       JOIN slots s ON b.slot_id = s.id
+       WHERE b.id = ? AND b.coach_id = ?`,
+      [id, req.user.id]
+    );
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    const slotId = booking.slot_id;
+    const wasShared = booking.is_shared === 1;
+    const sharedWithBookingId = booking.shared_with_booking_id;
+    const slotDuration = booking.duration_minutes; // Get from booking query result
+
+    // Delete the booking
+    await run('DELETE FROM bookings WHERE id = ?', [id]);
+
+    // If this was a shared booking and slot was 90 minutes, check if we need to revert the slot duration
+    if (wasShared && slotDuration === 90) {
+      // Check remaining bookings for this slot
+      const remainingBookings = await all(
+        'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
+        [slotId]
+      );
+
+      // If only one booking remains (or none), revert slot to 60 minutes
+      // IMPORTANT: Do NOT push subsequent slots forward - they stay where they are
+      if (remainingBookings.length <= 1) {
+        // Revert to 60 minutes (from original start time)
+        const originalEndTime = new Date(slot.start_time);
+        originalEndTime.setMinutes(originalEndTime.getMinutes() + 60);
+
+        await run(
+          'UPDATE slots SET end_time = ?, duration_minutes = 60 WHERE id = ?',
+          [originalEndTime.toISOString(), slotId]
+        );
+
+        // If there's a remaining booking, mark it as no longer shared
+        if (remainingBookings.length === 1) {
+          const remainingBooking = remainingBookings[0];
+          await run(
+            'UPDATE bookings SET is_shared = 0, shared_with_booking_id = NULL WHERE id = ?',
+            [remainingBooking.id]
+          );
+        }
+
+          // Update Google Calendar event
+          try {
+            const updatedSlot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
+            if (updatedSlot && updatedSlot.google_event_id) {
+              const auth = await getAuthorizedClient(booking.coach_id);
+              if (auth) {
+                const { client, tokenRow } = auth;
+                const calendarId = tokenRow.calendar_id;
+                if (calendarId) {
+                  // Get all remaining bookings for the event
+                  const allRemainingBookings = await all(
+                    'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
+                    [slotId]
+                  );
+                  
+                  const coach = await get('SELECT email FROM coaches WHERE id = ?', [booking.coach_id]);
+                  
+                  // Update event with remaining bookings (or no bookings if all cancelled)
+                  // Event duration reverts to 60 minutes, but subsequent slots stay pushed
+                  await updateEventWithBooking(
+                    client,
+                    calendarId,
+                    updatedSlot.google_event_id,
+                    remainingBookings.length > 0 ? remainingBookings[0] : null,
+                    allRemainingBookings,
+                    coach?.email,
+                    { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time }
+                  );
+                }
+              }
+            }
+          } catch (syncErr) {
+            console.error('Google Calendar update failed on booking cancellation:', syncErr);
+          }
+      } else if (remainingBookings.length === 2) {
+        // Still two bookings remain, but need to update shared_with_booking_id references
+        // The cancelled booking's partner needs to point to the other remaining booking
+        const cancelledId = parseInt(id);
+        const otherBooking = remainingBookings.find(b => b.id !== cancelledId);
+        const otherOtherBooking = remainingBookings.find(b => b.id !== cancelledId && b.id !== otherBooking?.id);
+        
+        if (otherBooking && sharedWithBookingId) {
+          // If the cancelled booking was paired with sharedWithBookingId, update that booking
+          if (otherOtherBooking && otherBooking.id === sharedWithBookingId) {
+            // Update the other booking to point to the remaining one
+            await run(
+              'UPDATE bookings SET shared_with_booking_id = ? WHERE id = ?',
+              [otherOtherBooking.id, otherBooking.id]
+            );
+            await run(
+              'UPDATE bookings SET shared_with_booking_id = ? WHERE id = ?',
+              [otherBooking.id, otherOtherBooking.id]
+            );
+          }
+        }
+      }
+    }
+
+    res.json({ message: 'Booking cancelled successfully' });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
