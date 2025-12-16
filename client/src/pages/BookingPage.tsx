@@ -232,7 +232,6 @@ function BookingPage() {
                         })}
                     </div>
                   </div>
-                </div>
 
                 <form onSubmit={handleSubmit} className="booking-form">
                   <div className="form-group">
