@@ -59,19 +59,28 @@ export function initDatabase() {
     CREATE TABLE IF NOT EXISTS coaches (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
+      password TEXT,
       name TEXT NOT NULL,
+      coach_booking_link TEXT UNIQUE,
       timezone TEXT DEFAULT 'America/Los_Angeles',
       daily_booking_limit INTEGER DEFAULT NULL,
       language TEXT DEFAULT 'en',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `);
-  
-  // Add settings columns if they don't exist (for existing databases)
-  db.run(`ALTER TABLE coaches ADD COLUMN timezone TEXT DEFAULT 'America/Los_Angeles'`, () => {});
-  db.run(`ALTER TABLE coaches ADD COLUMN daily_booking_limit INTEGER DEFAULT NULL`, () => {});
-  db.run(`ALTER TABLE coaches ADD COLUMN language TEXT DEFAULT 'en'`, () => {});
+  `, (err) => {
+    if (err) {
+      console.error('Error creating coaches table:', err);
+      return;
+    }
+    
+    // Add settings columns if they don't exist (for existing databases)
+    // Check if column exists first by trying to add it and ignoring errors
+    db.run(`ALTER TABLE coaches ADD COLUMN password TEXT`, () => {});
+    db.run(`ALTER TABLE coaches ADD COLUMN coach_booking_link TEXT UNIQUE`, () => {});
+    db.run(`ALTER TABLE coaches ADD COLUMN timezone TEXT DEFAULT 'America/Los_Angeles'`, () => {});
+    db.run(`ALTER TABLE coaches ADD COLUMN daily_booking_limit INTEGER DEFAULT NULL`, () => {});
+    db.run(`ALTER TABLE coaches ADD COLUMN language TEXT DEFAULT 'en'`, () => {});
+  });
 
   // Slots table
   db.run(`
@@ -83,10 +92,24 @@ export function initDatabase() {
       duration_minutes INTEGER NOT NULL,
       is_available BOOLEAN DEFAULT 1,
       booking_link TEXT UNIQUE NOT NULL,
+      google_event_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (coach_id) REFERENCES coaches(id)
     )
-  `);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating slots table:', err);
+      return;
+    }
+    
+    // Add Google event mapping to slots if missing
+    db.run(`ALTER TABLE slots ADD COLUMN google_event_id TEXT`, (alterErr) => {
+      // Ignore error if column already exists or table doesn't exist
+      if (alterErr && !String(alterErr.message).includes('duplicate column name') && !String(alterErr.message).includes('no such table')) {
+        console.error('Error adding google_event_id column:', alterErr.message);
+      }
+    });
+  });
 
   // Bookings table
   db.run(`
@@ -107,12 +130,17 @@ export function initDatabase() {
       FOREIGN KEY (coach_id) REFERENCES coaches(id),
       FOREIGN KEY (shared_with_booking_id) REFERENCES bookings(id)
     )
-  `);
-  
-  // Add new columns if they don't exist (for existing databases)
-  db.run(`ALTER TABLE bookings ADD COLUMN willing_to_share BOOLEAN DEFAULT 0`, () => {});
-  db.run(`ALTER TABLE bookings ADD COLUMN is_shared BOOLEAN DEFAULT 0`, () => {});
-  db.run(`ALTER TABLE bookings ADD COLUMN shared_with_booking_id INTEGER`, () => {});
+  `, (err) => {
+    if (err) {
+      console.error('Error creating bookings table:', err);
+      return;
+    }
+    
+    // Add new columns if they don't exist (for existing databases)
+    db.run(`ALTER TABLE bookings ADD COLUMN willing_to_share BOOLEAN DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE bookings ADD COLUMN is_shared BOOLEAN DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE bookings ADD COLUMN shared_with_booking_id INTEGER`, () => {});
+  });
 
   // Google tokens table
   db.run(`
@@ -129,23 +157,9 @@ export function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (coach_id) REFERENCES coaches(id)
     )
-  `);
-
-  // Add Google event mapping to slots if missing
-  db.run(`ALTER TABLE slots ADD COLUMN google_event_id TEXT`, (err) => {
-    // Ignore error if column already exists
-    if (err && !String(err.message).includes('duplicate column name')) {
-      console.error('Error adding google_event_id column:', err.message);
-    }
-  });
-
-  // Add coach_booking_link to coaches table if missing
-  // Note: SQLite doesn't support adding UNIQUE constraint directly, so we add it as TEXT
-  // Uniqueness is handled by the application (UUIDs are unique)
-  db.run(`ALTER TABLE coaches ADD COLUMN coach_booking_link TEXT`, (err) => {
-    // Ignore error if column already exists
-    if (err && !String(err.message).includes('duplicate column name')) {
-      console.error('Error adding coach_booking_link column:', err.message);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating google_tokens table:', err);
     }
   });
 
