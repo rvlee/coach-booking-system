@@ -64,7 +64,7 @@ function buildIso(dateStr: string, time: string): string {
   return dt.toISOString();
 }
 
-function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }: CreateSlotProps) {
+function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: CreateSlotProps) {
   const today = new Date().toISOString().slice(0, 10);
   const [weekStart, setWeekStart] = useState<string>(getWeekStart(today));
   const [daySettings, setDaySettings] = useState<Record<string, DaySetting>>({});
@@ -247,6 +247,13 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0 }: CreateSlotProps)
     initLoad();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Notify parent when week changes
+  useEffect(() => {
+    if (onWeekChange) {
+      onWeekChange(weekStart);
+    }
+  }, [weekStart, onWeekChange]);
 
   // Reload when week changes, slots are updated, or Google status changes
   useEffect(() => {

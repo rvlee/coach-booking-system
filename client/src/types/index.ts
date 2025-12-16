@@ -111,6 +111,7 @@ export interface ProtectedRouteProps {
 export interface CreateSlotProps {
   onSlotCreated: (slots: Slot | Slot[]) => void;
   slotsRefreshTrigger?: number;
+  onWeekChange?: (weekStart: string) => void;
 }
 
 export interface SlotsListProps {

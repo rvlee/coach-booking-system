@@ -17,9 +17,35 @@ function Dashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [slotsRefreshTrigger, setSlotsRefreshTrigger] = useState<number>(0);
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string | null>(null);
+
+  // Helper function to get week start (Monday)
+  const getWeekStart = (dateStr: string): string => {
+    const d = new Date(dateStr);
+    const day = d.getDay(); // 0-6 (Sun-Sat)
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    const monday = new Date(d);
+    monday.setDate(diff);
+    return monday.toISOString().slice(0, 10);
+  };
+
+  // Helper function to get week days
+  const getWeekDays = (weekStartStr: string): string[] => {
+    const days: string[] = [];
+    const start = new Date(weekStartStr);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      days.push(d.toISOString().slice(0, 10));
+    }
+    return days;
+  };
 
   useEffect(() => {
     fetchData();
+    // Set initial week to current week
+    const today = new Date().toISOString().slice(0, 10);
+    setSelectedWeekStart(getWeekStart(today));
   }, []);
 
   const fetchData = async (): Promise<void> => {
@@ -58,6 +84,34 @@ function Dashboard() {
   const handleSlotUpdated = (updatedSlot: Slot): void => {
     setSlots(slots.map(s => s.id === updatedSlot.id ? updatedSlot : s));
     setSlotsRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleWeekChange = (weekStart: string): void => {
+    setSelectedWeekStart(weekStart);
+  };
+
+  // Filter slots by selected week
+  const getWeekSlots = (): Slot[] => {
+    if (!selectedWeekStart) {
+      // If no week selected yet, show current week
+      const today = new Date().toISOString().slice(0, 10);
+      const currentWeekStart = getWeekStart(today);
+      return filterSlotsByWeek(slots, currentWeekStart);
+    }
+    return filterSlotsByWeek(slots, selectedWeekStart);
+  };
+
+  // Helper function to filter slots by week
+  const filterSlotsByWeek = (allSlots: Slot[], weekStartStr: string): Slot[] => {
+    const weekDays = getWeekDays(weekStartStr);
+    const weekStart = new Date(weekDays[0] + 'T00:00:00');
+    const weekEnd = new Date(weekDays[6] + 'T23:59:59.999');
+    
+    return allSlots.filter((slot) => {
+      if (!slot.start_time) return false;
+      const slotDate = new Date(slot.start_time);
+      return slotDate >= weekStart && slotDate <= weekEnd;
+    });
   };
 
   if (loading) {
@@ -104,9 +158,10 @@ function Dashboard() {
             <CreateSlot 
               onSlotCreated={handleSlotsCreated}
               slotsRefreshTrigger={slotsRefreshTrigger}
+              onWeekChange={handleWeekChange}
             />
             <SlotsList
-              slots={slots}
+              slots={getWeekSlots()}
               onSlotDeleted={handleSlotDeleted}
               onSlotUpdated={handleSlotUpdated}
             />

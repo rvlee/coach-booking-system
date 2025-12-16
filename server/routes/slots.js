@@ -153,7 +153,7 @@ router.get('/coach/:coachLink', async (req, res) => {
       return res.status(404).json({ error: 'Coach not found' });
     }
 
-    // Get all available slots for this coach
+    // Get all available slots for this coach (no week restriction - clients can book any week)
     // A slot is available if:
     // 1. It has no bookings, OR
     // 2. It has one booking with willing_to_share=true and is_shared=false (can be paired)
