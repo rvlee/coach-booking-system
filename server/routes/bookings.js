@@ -321,6 +321,11 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       // If only one booking remains (or none), revert slot to 60 minutes
       // IMPORTANT: Do NOT push subsequent slots forward - they stay where they are
       if (remainingBookings.length <= 1) {
+        const slot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
+        if (!slot) {
+          return res.status(404).json({ error: 'Slot not found' });
+        }
+        
         // Revert to 60 minutes (from original start time)
         const originalEndTime = new Date(slot.start_time);
         originalEndTime.setMinutes(originalEndTime.getMinutes() + 60);
