@@ -2,17 +2,33 @@ import { Booking, BookingsListProps } from '../types';
 import './BookingsList.css';
 
 function BookingsList({ bookings }: BookingsListProps) {
-  const formatDateTime = (dateString?: string): string => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  };
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+  const monthBookings = bookings.filter((b) => {
+    const date = new Date(b.start_time || b.created_at || '');
+    return date >= monthStart && date <= monthEnd;
+  });
+
+  // Aggregate per client (by email, with name for display)
+  const summaryMap = new Map<string, { name: string; email: string; count: number }>();
+  monthBookings.forEach((b) => {
+    const key = b.client_email;
+    if (!key) return;
+    const existing = summaryMap.get(key);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      summaryMap.set(key, {
+        name: b.client_name || b.client_email,
+        email: b.client_email,
+        count: 1
+      });
+    }
+  });
+
+  const summary = Array.from(summaryMap.values()).sort((a, b) => b.count - a.count);
 
   if (bookings.length === 0) {
     return (
@@ -24,61 +40,24 @@ function BookingsList({ bookings }: BookingsListProps) {
 
   return (
     <div className="bookings-list">
-      <h2>All Bookings</h2>
-      <div className="bookings-grid">
-        {bookings.map((booking: Booking) => (
-          <div key={booking.id} className="booking-card">
-            <div className="booking-header">
-              <h3>{booking.client_name}</h3>
-              <span className={`booking-status ${booking.status}`}>
-                {booking.status}
-              </span>
+      <h2>Bookings This Month</h2>
+      {summary.length === 0 ? (
+        <div className="bookings-empty">
+          <p>No bookings yet this month.</p>
+        </div>
+      ) : (
+        <div className="bookings-summary-grid">
+          {summary.map((item) => (
+            <div key={item.email} className="booking-summary-card">
+              <div className="summary-header">
+                <div className="summary-name">{item.name}</div>
+                <div className="summary-count">{item.count} booking{item.count > 1 ? 's' : ''}</div>
+              </div>
+              <div className="summary-email">{item.email}</div>
             </div>
-
-            <div className="booking-details">
-              {booking.is_shared && (
-                <div className="shared-badge">
-                  <span>👥 Shared Class</span>
-                  {booking.shared_with_name && (
-                    <span className="shared-with">with {booking.shared_with_name}</span>
-                  )}
-                </div>
-              )}
-              {booking.willing_to_share && !booking.is_shared && (
-                <div className="shareable-badge">
-                  <span>✓ Willing to Share</span>
-                </div>
-              )}
-              <div className="detail-item">
-                <span className="detail-label">Email</span>
-                <span className="detail-value">{booking.client_email}</span>
-              </div>
-              {booking.client_phone && (
-                <div className="detail-item">
-                  <span className="detail-label">Phone</span>
-                  <span className="detail-value">{booking.client_phone}</span>
-                </div>
-              )}
-              <div className="detail-item">
-                <span className="detail-label">Session Time</span>
-                <span className="detail-value">
-                  {formatDateTime(booking.start_time)}
-                </span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Duration</span>
-                <span className="detail-value">{booking.duration_minutes} minutes</span>
-              </div>
-              {booking.notes && (
-                <div className="detail-item">
-                  <span className="detail-label">Notes</span>
-                  <span className="detail-value">{booking.notes}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
