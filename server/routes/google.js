@@ -92,14 +92,28 @@ router.get('/auth/callback', async (req, res) => {
     );
 
     // Store Google tokens for calendar access
-    const calendarId = await ensureDedicatedCalendar(loginClient, {});
-    await storeTokens(coach.id, tokens, calendarId);
+    try {
+      const calendarId = await ensureDedicatedCalendar(loginClient, {});
+      await storeTokens(coach.id, tokens, calendarId);
+      console.log('Google Calendar connected successfully for coach:', coach.id);
+    } catch (calendarErr) {
+      console.error('Error connecting Google Calendar (non-fatal):', calendarErr);
+      // Don't fail the login if calendar connection fails
+    }
 
     // Redirect to frontend with token
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    console.log('Redirecting to frontend:', `${frontendUrl}/auth/callback`);
+    console.log('Coach data:', { id: coach.id, email: coach.email, name: coach.name });
     res.redirect(`${frontendUrl}/auth/callback?token=${encodeURIComponent(token)}&coach=${encodeURIComponent(JSON.stringify(coach))}`);
   } catch (err) {
     console.error('Google OAuth auth callback error:', err);
+    console.error('Error stack:', err.stack);
+    console.error('Error details:', {
+      message: err.message,
+      code: err.code,
+      response: err.response?.data
+    });
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     res.redirect(`${frontendUrl}/login?error=oauth_failed`);
   }

@@ -12,9 +12,13 @@ function AuthCallback() {
     const token = searchParams.get('token');
     const coachParam = searchParams.get('coach');
 
+    console.log('AuthCallback - token:', token ? 'present' : 'missing');
+    console.log('AuthCallback - coach:', coachParam ? 'present' : 'missing');
+
     if (token && coachParam) {
       try {
         const coach: Coach = JSON.parse(decodeURIComponent(coachParam));
+        console.log('AuthCallback - parsed coach:', { id: coach.id, email: coach.email });
         
         // Update auth context
         loginWithToken(token, coach);
@@ -23,12 +27,16 @@ function AuthCallback() {
         navigate('/dashboard');
       } catch (err) {
         console.error('Error processing auth callback:', err);
+        console.error('Error details:', err);
         navigate('/login?error=callback_failed');
       }
     } else {
+      console.error('AuthCallback - missing token or coach param');
+      console.error('Token:', token);
+      console.error('Coach:', coachParam);
       navigate('/login?error=missing_token');
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, loginWithToken]);
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
