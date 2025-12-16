@@ -36,7 +36,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign(
       { id: coach.id, email: coach.email },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '60d' }
     );
 
     res.status(201).json({ coach, token });
@@ -71,7 +71,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { id: coach.id, email: coach.email },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '60d' }
     );
 
     res.json({

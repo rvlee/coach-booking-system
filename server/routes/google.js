@@ -84,11 +84,11 @@ router.get('/auth/callback', async (req, res) => {
       coach = await get('SELECT id, email, name FROM coaches WHERE id = ?', [result.lastID]);
     }
 
-    // Generate JWT token
+    // Generate JWT token (60 days expiration)
     const token = jwt.sign(
       { id: coach.id, email: coach.email },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '60d' }
     );
 
     // Store Google tokens for calendar access
