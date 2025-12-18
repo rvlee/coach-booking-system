@@ -5,59 +5,6 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Helper function to push subsequent slots by minutes
-async function pushSubsequentSlots(slotId, minutesToPush, coachId) {
-  const slot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
-  if (!slot) return;
-
-  const slotEndTime = new Date(slot.end_time);
-  
-  // Get all subsequent slots for this coach that start after this slot
-  const subsequentSlots = await all(
-    `SELECT * FROM slots 
-     WHERE coach_id = ? 
-     AND start_time >= ? 
-     AND id != ?
-     ORDER BY start_time ASC`,
-    [coachId, slot.end_time.toISOString(), slotId]
-  );
-
-  // Update each subsequent slot
-  for (const subSlot of subsequentSlots) {
-    const newStart = new Date(subSlot.start_time);
-    newStart.setMinutes(newStart.getMinutes() + minutesToPush);
-    const newEnd = new Date(subSlot.end_time);
-    newEnd.setMinutes(newEnd.getMinutes() + minutesToPush);
-
-    await run(
-      'UPDATE slots SET start_time = ?, end_time = ? WHERE id = ?',
-      [newStart.toISOString(), newEnd.toISOString(), subSlot.id]
-    );
-
-    // Update Google Calendar event if exists
-    try {
-      if (subSlot.google_event_id) {
-        const auth = await getAuthorizedClient(coachId);
-        if (auth) {
-          const { client, tokenRow } = auth;
-          const calendarId = tokenRow.calendar_id;
-          if (calendarId) {
-            const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
-            await updateEvent(client, calendarId, subSlot.google_event_id, {
-              start_time: newStart.toISOString(),
-              end_time: newEnd.toISOString(),
-              duration_minutes: subSlot.duration_minutes,
-              id: subSlot.id
-            }, `${origin}/book/${subSlot.booking_link}`);
-          }
-        }
-      }
-    } catch (syncErr) {
-      console.error('Google Calendar update failed for pushed slot:', syncErr);
-    }
-  }
-}
-
 // Create a booking (public endpoint - no auth required)
 router.post('/', async (req, res) => {
   try {
@@ -183,9 +130,6 @@ router.post('/', async (req, res) => {
       );
 
       updatedSlot = await get('SELECT * FROM slots WHERE id = ?', [slot_id]);
-
-      // Push all subsequent slots by 30 minutes
-      await pushSubsequentSlots(slot_id, 30, slot.coach_id);
     }
 
     // Create booking
