@@ -177,8 +177,9 @@ router.post('/', async (req, res) => {
 
       updatedSlot = await get('SELECT * FROM slots WHERE id = ?', [slot_id]);
     }
-      
-      // Requirement #2: If next slot exists and is empty, delete it
+    
+    // Requirement #2: If next slot exists and is empty, delete it (only for shared bookings)
+    if (isShared) {
       const nextSlot = await findNextSlot(slot);
       if (nextSlot) {
         const nextSlotBookings = await all(

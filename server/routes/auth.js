@@ -84,5 +84,37 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Validate token and return user info
+router.get('/validate', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      // Get fresh user data from database
+      const coach = await get('SELECT id, email, name, coach_booking_link FROM coaches WHERE id = ?', [decoded.id]);
+      if (!coach) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json({
+        valid: true,
+        coach: { id: coach.id, email: coach.email, name: coach.name, coach_booking_link: coach.coach_booking_link }
+      });
+    });
+  } catch (error) {
+    console.error('Token validation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

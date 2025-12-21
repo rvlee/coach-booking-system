@@ -1,11 +1,21 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import BookingPage from './pages/BookingPage';
 import ProtectedRoute from './components/ProtectedRoute';
+
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  
+  return <Navigate to={user ? '/dashboard' : '/login'} replace />;
+}
 
 function App() {
   return (
@@ -23,7 +33,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<RootRedirect />} />
         </Routes>
       </AuthProvider>
     </LanguageProvider>

@@ -147,6 +147,69 @@ export async function ensureDedicatedCalendar(client, tokenRow, coachId = null) 
   return calendarId;
 }
 
+// Get timezone from Google Calendar and sync to coach settings
+export async function syncTimezoneFromGoogle(coachId) {
+  try {
+    const auth = await getAuthorizedClient(coachId);
+    if (!auth) {
+      console.log(`No Google Calendar connection for coach ${coachId}`);
+      return null;
+    }
+
+    const { client, tokenRow } = auth;
+    const calendar = google.calendar({ version: 'v3', auth: client });
+    
+    // Try to get timezone from dedicated calendar first, then fall back to primary
+    let googleTimezone = null;
+    const calendarsToTry = [];
+    
+    if (tokenRow.calendar_id) {
+      calendarsToTry.push(tokenRow.calendar_id);
+    }
+    calendarsToTry.push('primary'); // Always try primary as fallback
+    
+    for (const calendarId of calendarsToTry) {
+      try {
+        const calendarData = await calendar.calendars.get({
+          calendarId: calendarId
+        });
+        
+        googleTimezone = calendarData.data.timeZone;
+        if (googleTimezone) {
+          break; // Found timezone, exit loop
+        }
+      } catch (err) {
+        // If dedicated calendar fails, try primary
+        if (calendarId !== 'primary') {
+          console.log(`Could not get timezone from calendar ${calendarId}, trying primary...`);
+          continue;
+        }
+        throw err; // Re-throw if primary also fails
+      }
+    }
+    
+    if (googleTimezone) {
+      // Validate timezone
+      if (Intl.supportedValuesOf('timeZone').includes(googleTimezone)) {
+        // Update coach timezone in database
+        await run(
+          'UPDATE coaches SET timezone = ? WHERE id = ?',
+          [googleTimezone, coachId]
+        );
+        console.log(`Synced timezone ${googleTimezone} from Google Calendar for coach ${coachId}`);
+        return googleTimezone;
+      } else {
+        console.warn(`Invalid timezone from Google Calendar: ${googleTimezone}`);
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error syncing timezone from Google Calendar:', error);
+    return null;
+  }
+}
+
 export async function createEvent(client, calendarId, slot, bookingLink) {
   const calendar = google.calendar({ version: 'v3', auth: client });
   const event = await calendar.events.insert({

@@ -5,10 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
 function Login() {
+  const { user, loading: authLoading } = useAuth();
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   // Check for OAuth error
   useEffect(() => {
@@ -17,6 +25,17 @@ function Login() {
       setError('Google authentication failed. Please try again.');
     }
   }, [searchParams]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+          <div className="loading">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   const handleGoogleLogin = async () => {
     try {

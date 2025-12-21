@@ -8,7 +8,8 @@ import {
   getBusy,
   createOAuthClient,
   getLoginAuthUrl,
-  syncBookingsWithCalendar
+  syncBookingsWithCalendar,
+  syncTimezoneFromGoogle
 } from '../google.js';
 import { run, get } from '../database.js';
 import { google } from 'googleapis';
@@ -98,6 +99,11 @@ router.get('/auth/callback', async (req, res) => {
       await storeTokens(coach.id, tokens, calendarId);
       console.log('Google Calendar connected successfully for coach:', coach.id);
       
+      // Sync timezone from Google Calendar (non-blocking)
+      syncTimezoneFromGoogle(coach.id).catch(err => {
+        console.error('Error syncing timezone on login (non-fatal):', err);
+      });
+      
       // Sync bookings with Google Calendar (non-blocking)
       syncBookingsWithCalendar(coach.id).catch(err => {
         console.error('Error syncing bookings on login (non-fatal):', err);
@@ -153,6 +159,11 @@ router.get('/callback', async (req, res) => {
     
     console.log('Google Calendar connected for coach:', coach_id);
     console.log('Dedicated calendar ID:', calendarId);
+    
+    // Sync timezone from Google Calendar (non-blocking)
+    syncTimezoneFromGoogle(coach_id).catch(err => {
+      console.error('Error syncing timezone on calendar connection (non-fatal):', err);
+    });
 
     res.send(
       `<html><body><script>window.close();</script><p>Google Calendar connected. You can close this window.</p></body></html>`
@@ -195,11 +206,31 @@ router.get('/busy', authenticateToken, async (req, res) => {
 // Sync bookings with Google Calendar
 router.post('/sync', authenticateToken, async (req, res) => {
   try {
+    // Sync timezone first (non-blocking)
+    syncTimezoneFromGoogle(req.user.id).catch(err => {
+      console.error('Error syncing timezone (non-fatal):', err);
+    });
+    
     const result = await syncBookingsWithCalendar(req.user.id);
     res.json(result);
   } catch (err) {
     console.error('Sync error:', err);
     res.status(500).json({ error: 'Failed to sync bookings', details: err.message });
+  }
+});
+
+// Sync timezone from Google Calendar
+router.post('/sync-timezone', authenticateToken, async (req, res) => {
+  try {
+    const timezone = await syncTimezoneFromGoogle(req.user.id);
+    if (timezone) {
+      res.json({ success: true, timezone, message: 'Timezone synced from Google Calendar' });
+    } else {
+      res.json({ success: false, message: 'Could not sync timezone. Make sure Google Calendar is connected.' });
+    }
+  } catch (err) {
+    console.error('Timezone sync error:', err);
+    res.status(500).json({ error: 'Failed to sync timezone', details: err.message });
   }
 });
 

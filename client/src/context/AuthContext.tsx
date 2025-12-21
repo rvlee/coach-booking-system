@@ -23,14 +23,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    if (token && userData) {
-      setUser(JSON.parse(userData) as Coach);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
-    setLoading(false);
-    // Removed auto-login for production - users must log in manually
+    const validateAndRestoreSession = async () => {
+      const token = localStorage.getItem('token');
+      const userData = localStorage.getItem('user');
+      
+      if (token && userData) {
+        try {
+          // Validate token with backend
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          const response = await axios.get<{ valid: boolean; coach: Coach }>('/api/auth/validate');
+          
+          if (response.data.valid && response.data.coach) {
+            // Token is valid, restore user session
+            setUser(response.data.coach);
+            // Update stored user data in case it changed
+            localStorage.setItem('user', JSON.stringify(response.data.coach));
+          } else {
+            // Token invalid, clear storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            delete axios.defaults.headers.common['Authorization'];
+          }
+        } catch (error: any) {
+          // Token invalid or expired, clear storage
+          console.log('Token validation failed, clearing session');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          delete axios.defaults.headers.common['Authorization'];
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    validateAndRestoreSession();
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
