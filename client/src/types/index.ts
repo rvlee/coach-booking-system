@@ -123,6 +123,7 @@ export interface SlotsListProps {
 
 export interface BookingsListProps {
   bookings: Booking[];
+  onBookingCancelled?: () => void;
 }
 
 export interface WeeklyCalendarProps {

@@ -93,7 +93,7 @@ router.get('/booking-link', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all bookings for coach
+// Get all bookings for coach (only confirmed bookings)
 router.get('/bookings', authenticateToken, async (req, res) => {
   try {
     const bookings = await all(
@@ -102,7 +102,7 @@ router.get('/bookings', authenticateToken, async (req, res) => {
        FROM bookings b
        JOIN slots s ON b.slot_id = s.id
        LEFT JOIN bookings b2 ON b.shared_with_booking_id = b2.id OR b.id = b2.shared_with_booking_id
-       WHERE b.coach_id = ?
+       WHERE b.coach_id = ? AND b.status = 'confirmed'
        ORDER BY s.start_time DESC`,
       [req.user.id]
     );

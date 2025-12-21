@@ -7,7 +7,8 @@ import {
   ensureDedicatedCalendar,
   getBusy,
   createOAuthClient,
-  getLoginAuthUrl
+  getLoginAuthUrl,
+  syncBookingsWithCalendar
 } from '../google.js';
 import { run, get } from '../database.js';
 import { google } from 'googleapis';
@@ -93,9 +94,14 @@ router.get('/auth/callback', async (req, res) => {
 
     // Store Google tokens for calendar access
     try {
-      const calendarId = await ensureDedicatedCalendar(loginClient, {});
+      const calendarId = await ensureDedicatedCalendar(loginClient, {}, coach.id);
       await storeTokens(coach.id, tokens, calendarId);
       console.log('Google Calendar connected successfully for coach:', coach.id);
+      
+      // Sync bookings with Google Calendar (non-blocking)
+      syncBookingsWithCalendar(coach.id).catch(err => {
+        console.error('Error syncing bookings on login (non-fatal):', err);
+      });
     } catch (calendarErr) {
       console.error('Error connecting Google Calendar (non-fatal):', calendarErr);
       // Don't fail the login if calendar connection fails
@@ -142,7 +148,7 @@ router.get('/callback', async (req, res) => {
       return res.status(400).send('Missing coach_id to link tokens.');
     }
 
-    const calendarId = await ensureDedicatedCalendar(client, {});
+    const calendarId = await ensureDedicatedCalendar(client, {}, coach_id);
     await storeTokens(coach_id, tokens, calendarId);
     
     console.log('Google Calendar connected for coach:', coach_id);
@@ -183,6 +189,17 @@ router.get('/busy', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Google busy error:', err);
     res.status(500).json({ error: 'Failed to fetch busy times', details: err.message });
+  }
+});
+
+// Sync bookings with Google Calendar
+router.post('/sync', authenticateToken, async (req, res) => {
+  try {
+    const result = await syncBookingsWithCalendar(req.user.id);
+    res.json(result);
+  } catch (err) {
+    console.error('Sync error:', err);
+    res.status(500).json({ error: 'Failed to sync bookings', details: err.message });
   }
 });
 

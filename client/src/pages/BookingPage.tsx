@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Slot, BookingFormData, CoachSlotsResponse } from '../types';
@@ -14,6 +14,8 @@ function BookingPage() {
   const [isCoachLink, setIsCoachLink] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [formData, setFormData] = useState<BookingFormData>({
     client_name: '',
     client_email: '',
@@ -119,6 +121,112 @@ function BookingPage() {
     });
   };
 
+  const formatTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  const getDateString = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
+
+  // Group slots by date and filter available ones
+  const availableSlotsByDate = useMemo(() => {
+    const grouped: Record<string, Slot[]> = {};
+    slots
+      .filter((s) => {
+        const bookingCount = s.booking_count ?? 0;
+        const shareable = s.shareable_bookings ?? 0;
+        // Available if empty OR has 1-3 bookings that are all willing to share
+        return bookingCount === 0 || (bookingCount > 0 && bookingCount < 4 && shareable === bookingCount);
+      })
+      .forEach((s) => {
+        const dateStr = getDateString(new Date(s.start_time));
+        if (!grouped[dateStr]) {
+          grouped[dateStr] = [];
+        }
+        grouped[dateStr].push(s);
+      });
+    return grouped;
+  }, [slots]);
+
+  // Get available dates
+  const availableDates = useMemo(() => {
+    return Object.keys(availableSlotsByDate).sort();
+  }, [availableSlotsByDate]);
+
+  // Get slots for selected date
+  const slotsForSelectedDate = useMemo(() => {
+    if (!selectedDate) return [];
+    return availableSlotsByDate[selectedDate] || [];
+  }, [selectedDate, availableSlotsByDate]);
+
+  // Calendar helpers
+  const getDaysInMonth = (date: Date): Date[] => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days: Date[] = [];
+    
+    // Add days from previous month to fill first week
+    const startDay = firstDay.getDay();
+    for (let i = startDay - 1; i >= 0; i--) {
+      days.push(new Date(year, month, -i));
+    }
+    
+    // Add days of current month
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    // Add days from next month to fill last week
+    const remainingDays = 42 - days.length; // 6 weeks * 7 days
+    for (let day = 1; day <= remainingDays; day++) {
+      days.push(new Date(year, month + 1, day));
+    }
+    
+    return days;
+  };
+
+  const isDateAvailable = (date: Date): boolean => {
+    const dateStr = getDateString(date);
+    return availableDates.includes(dateStr);
+  };
+
+  const isDateSelected = (date: Date): boolean => {
+    if (!selectedDate) return false;
+    return getDateString(date) === selectedDate;
+  };
+
+  const isCurrentMonth = (date: Date): boolean => {
+    return date.getMonth() === currentMonth.getMonth() && 
+           date.getFullYear() === currentMonth.getFullYear();
+  };
+
+  const handleDateClick = (date: Date): void => {
+    const dateStr = getDateString(date);
+    if (isDateAvailable(date)) {
+      setSelectedDate(dateStr);
+      setSelectedSlotId(null);
+    }
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next'): void => {
+    setCurrentMonth((prev) => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
+
   if (loading) {
     return (
       <div className="booking-page">
@@ -197,42 +305,110 @@ function BookingPage() {
               <>
                 {slots.length > 0 && (
                   <>
-                    <div className="slots-selection">
-                      <h3>Select a Time Slot</h3>
-                      <div className="slots-grid">
-                        {slots
-                          .filter((s) => {
-                            const bookingCount = s.booking_count ?? 0;
-                            const shareable = s.shareable_bookings ?? 0;
-                            const shared = s.shared_bookings ?? 0;
-                            // Mirror backend rules: show if no bookings, or 1 booking that is willing_to_share and not yet shared
-                            return bookingCount === 0 || (bookingCount === 1 && shareable === 1 && shared === 0);
-                          })
-                          .map((s) => {
-                            const isShareable =
-                              (s.booking_count ?? 0) === 1 &&
-                              (s.shareable_bookings ?? 0) === 1 &&
-                              (s.shared_bookings ?? 0) === 0;
-
+                    <div className="calendar-section">
+                      <h3>Select a Date</h3>
+                      <div className="calendar-container">
+                        <div className="calendar-header">
+                          <button 
+                            type="button" 
+                            className="calendar-nav-btn"
+                            onClick={() => navigateMonth('prev')}
+                            aria-label="Previous month"
+                          >
+                            ‹
+                          </button>
+                          <h4 className="calendar-month">
+                            {currentMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                          </h4>
+                          <button 
+                            type="button" 
+                            className="calendar-nav-btn"
+                            onClick={() => navigateMonth('next')}
+                            aria-label="Next month"
+                          >
+                            ›
+                          </button>
+                        </div>
+                        <div className="calendar-weekdays">
+                          <div className="calendar-weekday">Sun</div>
+                          <div className="calendar-weekday">Mon</div>
+                          <div className="calendar-weekday">Tue</div>
+                          <div className="calendar-weekday">Wed</div>
+                          <div className="calendar-weekday">Thu</div>
+                          <div className="calendar-weekday">Fri</div>
+                          <div className="calendar-weekday">Sat</div>
+                        </div>
+                        <div className="calendar-days">
+                          {getDaysInMonth(currentMonth).map((date, idx) => {
+                            const dateStr = getDateString(date);
+                            const available = isDateAvailable(date);
+                            const selected = isDateSelected(date);
+                            const currentMonthDay = isCurrentMonth(date);
+                            
                             return (
                               <button
-                                key={s.id}
+                                key={idx}
                                 type="button"
-                                className={`slot-option ${selectedSlotId === s.id ? 'selected' : ''} ${isShareable ? 'shareable' : ''}`}
-                                onClick={() => setSelectedSlotId(s.id)}
+                                className={`calendar-day ${!currentMonthDay ? 'other-month' : ''} ${available ? 'available' : ''} ${selected ? 'selected' : ''}`}
+                                onClick={() => handleDateClick(date)}
+                                disabled={!available}
+                                aria-label={`${date.toLocaleDateString()} ${available ? 'Available' : 'Not available'}`}
                               >
-                                <div className="slot-option-time">{formatDateTime(s.start_time)}</div>
-                                <div className="slot-option-duration">{s.duration_minutes} min</div>
-                                {isShareable && (
-                                  <div className="slot-option-shareable">
-                                    Shared-friendly (1 spot taken)
-                                  </div>
+                                <span className="calendar-day-number">{date.getDate()}</span>
+                                {available && (
+                                  <span className="calendar-day-badge">
+                                    {availableSlotsByDate[dateStr]?.length || 0}
+                                  </span>
                                 )}
                               </button>
                             );
                           })}
+                        </div>
                       </div>
                     </div>
+
+                    {selectedDate && slotsForSelectedDate.length > 0 && (
+                      <div className="slots-selection">
+                        <h3>Available Times for {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h3>
+                        <div className="slots-grid">
+                          {slotsForSelectedDate
+                            .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+                            .map((s) => {
+                              const bookingCount = s.booking_count ?? 0;
+                              const isShareable = bookingCount > 0 && bookingCount < 4;
+
+                              return (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  className={`slot-option ${selectedSlotId === s.id ? 'selected' : ''} ${isShareable ? 'shareable' : ''}`}
+                                  onClick={() => setSelectedSlotId(s.id)}
+                                >
+                                  <div className="slot-option-time">{formatTime(s.start_time)}</div>
+                                  <div className="slot-option-duration">{s.duration_minutes} min</div>
+                                  {isShareable && (
+                                    <div className="slot-option-shareable">
+                                      Shared-friendly ({bookingCount}/4 spots taken)
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedDate && slotsForSelectedDate.length === 0 && (
+                      <div className="no-slots-message">
+                        <p>No available time slots for this date. Please select another date.</p>
+                      </div>
+                    )}
+
+                    {!selectedDate && (
+                      <div className="select-date-message">
+                        <p>Please select a date from the calendar above to view available time slots.</p>
+                      </div>
+                    )}
 
                     <form onSubmit={handleSubmit} className="booking-form">
                   <div className="form-group">

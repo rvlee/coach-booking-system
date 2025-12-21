@@ -12,7 +12,9 @@ router.get('/', authenticateToken, async (req, res) => {
     const slots = await all(
       `SELECT s.*, 
        COUNT(b.id) as booking_count,
-       CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as is_booked
+       CASE WHEN COUNT(b.id) > 0 THEN 1 ELSE 0 END as is_booked,
+       COALESCE(SUM(CASE WHEN b.willing_to_share = 1 AND b.is_shared = 0 THEN 1 ELSE 0 END), 0) as shareable_bookings,
+       COALESCE(SUM(CASE WHEN b.is_shared = 1 THEN 1 ELSE 0 END), 0) as shared_bookings
        FROM slots s
        LEFT JOIN bookings b ON s.id = b.slot_id AND b.status = 'confirmed'
        WHERE s.coach_id = ?
@@ -52,7 +54,7 @@ router.post('/batch', authenticateToken, async (req, res) => {
     let calendarId = null;
     if (auth) {
       const { client, tokenRow } = auth;
-      calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
+      calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
       auth.calendarId = calendarId;
     }
 
@@ -123,7 +125,7 @@ router.post('/', authenticateToken, async (req, res) => {
       const auth = await getAuthorizedClient(req.user.id);
       if (auth) {
         const { client, tokenRow } = auth;
-        const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
+        const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
         const origin = req.headers.origin || 'http://localhost:3000';
         const eventId = await createEvent(client, calendarId, slot, `${origin}/book/${bookingLink}`);
         await run('UPDATE slots SET google_event_id = ? WHERE id = ?', [eventId, slot.id]);
@@ -156,7 +158,8 @@ router.get('/coach/:coachLink', async (req, res) => {
     // Get all available slots for this coach (no week restriction - clients can book any week)
     // A slot is available if:
     // 1. It has no bookings, OR
-    // 2. It has one booking with willing_to_share=true and is_shared=false (can be paired)
+    // 2. It has 1-3 bookings with willing_to_share=true (can add more, up to 4 total)
+    //    AND the immediate next slot is available (not booked)
     const slots = await all(
       `SELECT s.*, 
        COUNT(b.id) as booking_count,
@@ -166,19 +169,45 @@ router.get('/coach/:coachLink', async (req, res) => {
        LEFT JOIN bookings b ON s.id = b.slot_id AND b.status = 'confirmed'
        WHERE s.coach_id = ? AND s.is_available = 1
        GROUP BY s.id
-       HAVING booking_count = 0 OR (booking_count = 1 AND shareable_bookings = 1 AND shared_bookings = 0)
+       HAVING booking_count = 0 OR (booking_count > 0 AND booking_count < 4 AND shareable_bookings = booking_count)
        ORDER BY s.start_time ASC`,
       [coach.id]
     );
 
-    // Filter out fully booked slots (2 bookings or 1 shared booking)
-    const availableSlots = slots.filter(slot => {
-      // Available if no bookings, or has 1 booking that's willing to share but not yet shared
+    // Filter slots: for shareable slots, check if next slot is available
+    const availableSlots = [];
+    for (const slot of slots) {
       const bookingCount = slot.booking_count || 0;
       const shareable = slot.shareable_bookings || 0;
-      const shared = slot.shared_bookings || 0;
-      return bookingCount === 0 || (bookingCount === 1 && shareable === 1 && shared === 0);
-    });
+      
+      // Empty slot - always available
+      if (bookingCount === 0) {
+        availableSlots.push(slot);
+        continue;
+      }
+      
+      // Shareable slot (1-3 bookings, all willing to share)
+      if (bookingCount > 0 && bookingCount < 4 && shareable === bookingCount) {
+        // Requirement #1: Only show if next slot is available (not booked)
+        const nextSlot = await get(
+          `SELECT s.id, 
+           COUNT(b.id) as booking_count
+           FROM slots s
+           LEFT JOIN bookings b ON s.id = b.slot_id AND b.status = 'confirmed'
+           WHERE s.coach_id = ? 
+           AND s.is_available = 1
+           AND s.start_time = ?
+           GROUP BY s.id`,
+          [coach.id, slot.end_time]
+        );
+        
+        // If next slot doesn't exist or is empty, show this shareable slot
+        if (!nextSlot || (nextSlot.booking_count || 0) === 0) {
+          availableSlots.push(slot);
+        }
+        // If next slot is booked, don't show this shareable slot
+      }
+    }
 
     res.json({
       coach_name: coach.name,
@@ -246,7 +275,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         const auth = await getAuthorizedClient(req.user.id);
         if (auth) {
           const { client, tokenRow } = auth;
-          const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
+          const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
           const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
           await updateEvent(client, calendarId, updatedSlot.google_event_id, updatedSlot, `${origin}/book/${updatedSlot.booking_link}`);
         }
@@ -281,7 +310,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         const auth = await getAuthorizedClient(req.user.id);
         if (auth) {
           const { client, tokenRow } = auth;
-          const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
+          const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
           await deleteEvent(client, calendarId, slot.google_event_id);
         }
       }

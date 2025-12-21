@@ -50,6 +50,11 @@ function Dashboard() {
 
   const fetchData = async (): Promise<void> => {
     try {
+      // Sync bookings with Google Calendar first (non-blocking)
+      axios.post('/api/google/sync').catch(err => {
+        console.log('Sync skipped or failed (non-fatal):', err.response?.data || err.message);
+      });
+      
       const [slotsRes, bookingsRes] = await Promise.all([
         axios.get<Slot[]>('/api/slots'),
         axios.get<Booking[]>('/api/coach/bookings')
@@ -88,6 +93,11 @@ function Dashboard() {
 
   const handleWeekChange = (weekStart: string): void => {
     setSelectedWeekStart(weekStart);
+  };
+
+  const handleBookingCancelled = async (): Promise<void> => {
+    // Refresh both slots and bookings after cancellation
+    await fetchData();
   };
 
   // Filter slots by selected week
@@ -169,7 +179,7 @@ function Dashboard() {
         )}
 
         {activeTab === 'bookings' && (
-          <BookingsList bookings={bookings} />
+          <BookingsList bookings={bookings} onBookingCancelled={handleBookingCancelled} />
         )}
 
         {activeTab === 'settings' && (

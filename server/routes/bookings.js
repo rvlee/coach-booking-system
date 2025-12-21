@@ -5,6 +5,22 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Helper function to find the immediate next slot (slot that starts when current slot ends)
+async function findNextSlot(currentSlot) {
+  const nextSlot = await get(
+    `SELECT s.*, 
+     COUNT(b.id) as booking_count
+     FROM slots s
+     LEFT JOIN bookings b ON s.id = b.slot_id AND b.status = 'confirmed'
+     WHERE s.coach_id = ? 
+     AND s.is_available = 1
+     AND s.start_time = ?
+     GROUP BY s.id`,
+    [currentSlot.coach_id, currentSlot.end_time]
+  );
+  return nextSlot;
+}
+
 // Create a booking (public endpoint - no auth required)
 router.post('/', async (req, res) => {
   try {
@@ -89,40 +105,70 @@ router.post('/', async (req, res) => {
 
     let isShared = false;
     let sharedWithBookingId = null;
+    const MAX_SHARED_BOOKINGS = 4; // Maximum 4 people can share a slot
 
     // Check booking availability based on willing_to_share
     if (existingBookings.length > 0) {
-      const existingBooking = existingBookings[0];
+      // Check if all existing bookings are willing to share
+      const allWillingToShare = existingBookings.every(b => b.willing_to_share === 1);
+      const hasSharedBookings = existingBookings.some(b => b.is_shared === 1);
+      const currentSharedCount = existingBookings.length;
       
-      // If user is willing to share, check if there's already a booking with willing_to_share that's not yet shared
-      if (willing_to_share && existingBooking.willing_to_share && !existingBooking.is_shared) {
-        // Pair this booking with the existing one
-        isShared = true;
-        sharedWithBookingId = existingBooking.id;
-        
-        // Mark the existing booking as shared too
-        await run(
-          'UPDATE bookings SET is_shared = 1, shared_with_booking_id = ? WHERE id = ?',
-          [null, existingBooking.id] // We'll update this booking's shared_with_booking_id after creating the new one
-        );
-      } else if (!willing_to_share) {
+      if (!willing_to_share) {
         // User doesn't want to share, but slot is already booked
         return res.status(400).json({ error: 'This slot is already booked' });
-      } else if (willing_to_share && existingBooking.is_shared) {
-        // Slot is already fully booked as a shared class
-        return res.status(400).json({ error: 'This slot is already fully booked as a shared class' });
-      } else if (willing_to_share && !existingBooking.willing_to_share) {
-        // User wants to share, but existing booking doesn't
+      }
+      
+      if (!allWillingToShare) {
+        // Some existing bookings don't want to share
         return res.status(400).json({ error: 'This slot is already booked by someone who does not want to share' });
+      }
+      
+      if (currentSharedCount >= MAX_SHARED_BOOKINGS) {
+        // Slot is already fully booked (4 people)
+        return res.status(400).json({ error: 'This slot is already fully booked as a shared class (4 people)' });
+      }
+      
+      // User is willing to share and slot has space (less than 4 bookings)
+      // Check if next slot is available (for requirement #2)
+      const nextSlot = await findNextSlot(slot);
+      
+      if (nextSlot) {
+        // Next slot exists - check if it's booked
+        const nextSlotBookings = await all(
+          'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
+          [nextSlot.id]
+        );
+        
+        if (nextSlotBookings.length > 0) {
+          // Next slot is already booked - cannot make this a shared class
+          return res.status(400).json({ error: 'Cannot create shared class: the following slot is already booked' });
+        }
+        
+        // Next slot exists and is empty - we'll delete it after creating the booking
+      }
+      
+      // Mark this as a shared booking
+      isShared = true;
+      // Link to the first existing booking (they're all in the same shared group)
+      sharedWithBookingId = existingBookings[0].id;
+      
+      // Mark all existing bookings as shared
+      for (const existingBooking of existingBookings) {
+        await run(
+          'UPDATE bookings SET is_shared = 1 WHERE id = ?',
+          [existingBooking.id]
+        );
       }
     }
 
-    // Only extend slot to 90 minutes if this is the second booking (shared class)
+    // Extend slot duration to 90 minutes when it becomes a shared class (2+ people)
+    // Duration stays at 90 minutes for 2, 3, or 4 people
     let updatedSlot = slot;
     if (isShared && slot.duration_minutes === 60) {
-      // This is the second booking, so extend the slot to 90 minutes
-      const newEndTime = new Date(slot.end_time);
-      newEndTime.setMinutes(newEndTime.getMinutes() + 30); // Add 30 minutes
+      // First time becoming shared - extend to 90 minutes
+      const newEndTime = new Date(slot.start_time);
+      newEndTime.setMinutes(newEndTime.getMinutes() + 90);
 
       await run(
         'UPDATE slots SET end_time = ?, duration_minutes = 90 WHERE id = ?',
@@ -130,6 +176,40 @@ router.post('/', async (req, res) => {
       );
 
       updatedSlot = await get('SELECT * FROM slots WHERE id = ?', [slot_id]);
+    }
+      
+      // Requirement #2: If next slot exists and is empty, delete it
+      const nextSlot = await findNextSlot(slot);
+      if (nextSlot) {
+        const nextSlotBookings = await all(
+          'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
+          [nextSlot.id]
+        );
+        
+        if (nextSlotBookings.length === 0) {
+          // Next slot is empty - delete it
+          try {
+            // Delete from Google Calendar if it has an event
+            if (nextSlot.google_event_id) {
+              const auth = await getAuthorizedClient(slot.coach_id);
+              if (auth) {
+                const { client, tokenRow } = auth;
+                const calendarId = tokenRow.calendar_id;
+                if (calendarId) {
+                  const { deleteEvent } = await import('../google.js');
+                  await deleteEvent(client, calendarId, nextSlot.google_event_id);
+                }
+              }
+            }
+            // Delete the slot
+            await run('DELETE FROM slots WHERE id = ?', [nextSlot.id]);
+            console.log(`Deleted next slot ${nextSlot.id} because shared booking was created`);
+          } catch (deleteErr) {
+            console.error('Error deleting next slot:', deleteErr);
+            // Don't fail the booking if slot deletion fails
+          }
+        }
+      }
     }
 
     // Create booking
@@ -156,7 +236,7 @@ router.post('/', async (req, res) => {
         const auth = await getAuthorizedClient(slot.coach_id);
         if (auth) {
           const { client, tokenRow } = auth;
-          const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow));
+          const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, slot.coach_id));
           
           // Get coach email to verify organizer
           const coach = await get('SELECT email FROM coaches WHERE id = ?', [slot.coach_id]);
@@ -254,22 +334,22 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     // Delete the booking
     await run('DELETE FROM bookings WHERE id = ?', [id]);
 
-    // If this was a shared booking and slot was 90 minutes, check if we need to revert the slot duration
-    if (wasShared && slotDuration === 90) {
+    // If this was a shared booking, check if we need to adjust the slot duration
+    if (wasShared) {
       // Check remaining bookings for this slot
       const remainingBookings = await all(
         'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
         [slotId]
       );
 
-      // If only one booking remains (or none), revert slot to 60 minutes
-      // IMPORTANT: Do NOT push subsequent slots forward - they stay where they are
-      if (remainingBookings.length <= 1) {
-        const slot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
-        if (!slot) {
-          return res.status(404).json({ error: 'Slot not found' });
-        }
-        
+      const slot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
+      if (!slot) {
+        return res.status(404).json({ error: 'Slot not found' });
+      }
+      
+      // Revert to 60 minutes only if no shared bookings remain (0 or 1 booking)
+      // If 2+ bookings remain, keep at 90 minutes
+      if (remainingBookings.length <= 1 && slot.duration_minutes === 90) {
         // Revert to 60 minutes (from original start time)
         const originalEndTime = new Date(slot.start_time);
         originalEndTime.setMinutes(originalEndTime.getMinutes() + 60);
@@ -278,8 +358,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
           'UPDATE slots SET end_time = ?, duration_minutes = 60 WHERE id = ?',
           [originalEndTime.toISOString(), slotId]
         );
+      }
 
-        // If there's a remaining booking, mark it as no longer shared
+      // If only one booking remains (or none), mark it as no longer shared
+      if (remainingBookings.length <= 1) {
         if (remainingBookings.length === 1) {
           const remainingBooking = remainingBookings[0];
           await run(
@@ -287,6 +369,21 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             [remainingBooking.id]
           );
         }
+      } else {
+        // Update shared_with_booking_id references for remaining bookings
+        // All remaining bookings should still be marked as shared
+        for (let i = 0; i < remainingBookings.length; i++) {
+          const booking = remainingBookings[i];
+          // Link to the first booking in the group (or next one if this is the first)
+          const linkToId = i === 0 ? remainingBookings[1]?.id : remainingBookings[0].id;
+          if (linkToId) {
+            await run(
+              'UPDATE bookings SET is_shared = 1, shared_with_booking_id = ? WHERE id = ?',
+              [linkToId, booking.id]
+            );
+          }
+        }
+      }
 
           // Update Google Calendar event
           try {

@@ -1,12 +1,34 @@
+import { useState } from 'react';
+import axios from 'axios';
 import { Booking, BookingsListProps } from '../types';
 import './BookingsList.css';
 
-function BookingsList({ bookings }: BookingsListProps) {
+function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
+  const [cancelling, setCancelling] = useState<Record<number, boolean>>({});
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-  const monthBookings = bookings.filter((b) => {
+  const handleCancelBooking = async (bookingId: number): Promise<void> => {
+    if (!confirm('Are you sure you want to cancel this booking?')) return;
+
+    setCancelling({ ...cancelling, [bookingId]: true });
+    try {
+      await axios.delete(`/api/bookings/${bookingId}`);
+      if (onBookingCancelled) {
+        onBookingCancelled();
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Failed to cancel booking');
+    } finally {
+      setCancelling({ ...cancelling, [bookingId]: false });
+    }
+  };
+
+  // Filter to only confirmed bookings
+  const confirmedBookings = bookings.filter((b) => b.status === 'confirmed');
+
+  const monthBookings = confirmedBookings.filter((b) => {
     const date = new Date(b.start_time || b.created_at || '');
     return date >= monthStart && date <= monthEnd;
   });
@@ -30,7 +52,7 @@ function BookingsList({ bookings }: BookingsListProps) {
 
   const summary = Array.from(summaryMap.values()).sort((a, b) => b.count - a.count);
 
-  if (bookings.length === 0) {
+  if (confirmedBookings.length === 0) {
     return (
       <div className="bookings-empty">
         <p>No bookings yet. Share your booking links with clients!</p>
@@ -46,17 +68,61 @@ function BookingsList({ bookings }: BookingsListProps) {
           <p>No bookings yet this month.</p>
         </div>
       ) : (
-        <div className="bookings-summary-grid">
-          {summary.map((item) => (
-            <div key={item.email} className="booking-summary-card">
-              <div className="summary-header">
-                <div className="summary-name">{item.name}</div>
-                <div className="summary-count">{item.count} booking{item.count > 1 ? 's' : ''}</div>
+        <>
+          <div className="bookings-summary-grid">
+            {summary.map((item) => (
+              <div key={item.email} className="booking-summary-card">
+                <div className="summary-header">
+                  <div className="summary-name">{item.name}</div>
+                  <div className="summary-count">{item.count} booking{item.count > 1 ? 's' : ''}</div>
+                </div>
+                <div className="summary-email">{item.email}</div>
               </div>
-              <div className="summary-email">{item.email}</div>
+            ))}
+          </div>
+          <div className="bookings-detail-section">
+            <h3>All Bookings</h3>
+            <div className="bookings-detail-list">
+              {confirmedBookings
+                .sort((a, b) => {
+                  const dateA = new Date(a.start_time || a.created_at || '').getTime();
+                  const dateB = new Date(b.start_time || b.created_at || '').getTime();
+                  return dateB - dateA;
+                })
+                .map((booking) => (
+                  <div key={booking.id} className="booking-detail-card">
+                    <div className="booking-detail-info">
+                      <div className="booking-detail-name">{booking.client_name}</div>
+                      <div className="booking-detail-email">{booking.client_email}</div>
+                      <div className="booking-detail-time">
+                        {booking.start_time
+                          ? new Date(booking.start_time).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit'
+                            })
+                          : 'Time TBD'}
+                      </div>
+                      {booking.is_shared && booking.shared_with_name && (
+                        <div className="booking-detail-shared">
+                          Shared with: {booking.shared_with_name}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleCancelBooking(booking.id)}
+                      className="cancel-booking-btn"
+                      disabled={cancelling[booking.id]}
+                    >
+                      {cancelling[booking.id] ? 'Cancelling...' : 'Cancel'}
+                    </button>
+                  </div>
+                ))}
             </div>
-          ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

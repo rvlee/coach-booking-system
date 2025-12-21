@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { get, run } from './database.js';
+import { get, run, all } from './database.js';
 
 const {
   GOOGLE_CLIENT_ID,
@@ -115,8 +115,11 @@ export async function getAuthorizedClient(coachId) {
   return { client, tokenRow };
 }
 
-export async function ensureDedicatedCalendar(client, tokenRow) {
+export async function ensureDedicatedCalendar(client, tokenRow, coachId = null) {
+  // If calendar_id already exists, return it
   if (tokenRow?.calendar_id) return tokenRow.calendar_id;
+  
+  // Create new calendar
   const calendar = google.calendar({ version: 'v3', auth: client });
   const created = await calendar.calendars.insert({
     requestBody: {
@@ -124,7 +127,24 @@ export async function ensureDedicatedCalendar(client, tokenRow) {
       description: 'Dedicated calendar for coaching slot availability'
     }
   });
-  return created.data.id;
+  
+  const calendarId = created.data.id;
+  
+  // Save calendar_id to database if coachId is provided
+  if (coachId) {
+    try {
+      await run(
+        'UPDATE google_tokens SET calendar_id = ? WHERE coach_id = ?',
+        [calendarId, coachId]
+      );
+      console.log(`Saved calendar_id ${calendarId} for coach ${coachId}`);
+    } catch (err) {
+      console.error('Failed to save calendar_id to database:', err);
+      // Continue anyway - the calendar was created successfully
+    }
+  }
+  
+  return calendarId;
 }
 
 export async function createEvent(client, calendarId, slot, bookingLink) {
@@ -350,6 +370,144 @@ export async function getBusy(client, calendarId, dayIso) {
 
   console.log(`Merged to ${merged.length} busy periods`);
   return merged;
+}
+
+// Sync bookings with Google Calendar - check for deleted events
+export async function syncBookingsWithCalendar(coachId) {
+  try {
+    const auth = await getAuthorizedClient(coachId);
+    if (!auth) {
+      console.log(`No Google Calendar connection for coach ${coachId}`);
+      return { synced: false, reason: 'No Google Calendar connection' };
+    }
+
+    const { client, tokenRow } = auth;
+    const calendarId = tokenRow.calendar_id;
+    
+    if (!calendarId) {
+      console.log(`No calendar_id for coach ${coachId}`);
+      return { synced: false, reason: 'No calendar_id' };
+    }
+
+    const calendar = google.calendar({ version: 'v3', auth: client });
+    
+    // Fetch all events from the calendar (up to 2500, which should be enough)
+    // We'll fetch events from the past 30 days to future 1 year
+    const now = new Date();
+    const timeMin = new Date(now);
+    timeMin.setDate(timeMin.getDate() - 30); // 30 days ago
+    const timeMax = new Date(now);
+    timeMax.setFullYear(timeMax.getFullYear() + 1); // 1 year from now
+
+    console.log(`Syncing bookings for coach ${coachId} from calendar ${calendarId}`);
+    console.log(`Time range: ${timeMin.toISOString()} to ${timeMax.toISOString()}`);
+
+    let allEvents = [];
+    let nextPageToken = null;
+    
+    do {
+      const response = await calendar.events.list({
+        calendarId,
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        maxResults: 2500,
+        pageToken: nextPageToken,
+        singleEvents: true,
+        orderBy: 'startTime'
+      });
+
+      if (response.data.items) {
+        allEvents.push(...response.data.items);
+      }
+      
+      nextPageToken = response.data.nextPageToken;
+    } while (nextPageToken);
+
+    console.log(`Found ${allEvents.length} events in Google Calendar`);
+
+    // Get all slots with google_event_id for this coach
+    const slotsWithEvents = await all(
+      `SELECT id, google_event_id FROM slots WHERE coach_id = ? AND google_event_id IS NOT NULL`,
+      [coachId]
+    );
+
+    console.log(`Found ${slotsWithEvents.length} slots with google_event_id in database`);
+
+    // Create a set of event IDs from Google Calendar
+    const calendarEventIds = new Set(allEvents.map(e => e.id));
+
+    // Find slots whose events are missing from Google Calendar
+    const missingEventSlots = slotsWithEvents.filter(
+      slot => !calendarEventIds.has(slot.google_event_id)
+    );
+
+    console.log(`Found ${missingEventSlots.length} slots with missing events in Google Calendar`);
+
+    if (missingEventSlots.length === 0) {
+      return { synced: true, cancelled: 0, message: 'All bookings are in sync' };
+    }
+
+    // Cancel bookings for slots with missing events
+    let cancelledCount = 0;
+
+    for (const slot of missingEventSlots) {
+      // Get all confirmed bookings for this slot
+      const bookings = await all(
+        `SELECT id FROM bookings WHERE slot_id = ? AND status = 'confirmed'`,
+        [slot.id]
+      );
+
+      if (bookings.length > 0) {
+        // Mark bookings as cancelled (don't delete, just update status)
+        for (const booking of bookings) {
+          await run(
+            `UPDATE bookings SET status = 'cancelled' WHERE id = ?`,
+            [booking.id]
+          );
+          cancelledCount++;
+        }
+
+        // Check if slot needs duration reversion (for shared bookings)
+        const slotDetails = await get(
+          `SELECT duration_minutes FROM slots WHERE id = ?`,
+          [slot.id]
+        );
+
+        if (slotDetails && slotDetails.duration_minutes === 90) {
+          // Revert to 60 minutes
+          const slotFull = await get(
+            `SELECT * FROM slots WHERE id = ?`,
+            [slot.id]
+          );
+          if (slotFull) {
+            const originalEndTime = new Date(slotFull.start_time);
+            originalEndTime.setMinutes(originalEndTime.getMinutes() + 60);
+            await run(
+              'UPDATE slots SET end_time = ?, duration_minutes = 60 WHERE id = ?',
+              [originalEndTime.toISOString(), slot.id]
+            );
+          }
+        }
+
+        // Clear google_event_id from slot since event no longer exists
+        await run(
+          `UPDATE slots SET google_event_id = NULL WHERE id = ?`,
+          [slot.id]
+        );
+
+        console.log(`Cancelled ${bookings.length} booking(s) for slot ${slot.id} (event ${slot.google_event_id} was deleted from Google Calendar)`);
+      }
+    }
+
+    return {
+      synced: true,
+      cancelled: cancelledCount,
+      message: `Synced ${cancelledCount} booking(s) cancelled from Google Calendar`
+    };
+  } catch (error) {
+    console.error('Error syncing bookings with Google Calendar:', error);
+    return { synced: false, error: error.message };
+  }
 }
 
 
