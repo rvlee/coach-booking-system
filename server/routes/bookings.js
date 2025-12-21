@@ -386,61 +386,39 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         }
       }
 
-          // Update Google Calendar event
-          try {
-            const updatedSlot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
-            if (updatedSlot && updatedSlot.google_event_id) {
-              const auth = await getAuthorizedClient(booking.coach_id);
-              if (auth) {
-                const { client, tokenRow } = auth;
-                const calendarId = tokenRow.calendar_id;
-                if (calendarId) {
-                  // Get all remaining bookings for the event
-                  const allRemainingBookings = await all(
-                    'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
-                    [slotId]
-                  );
-                  
-                  const coach = await get('SELECT email FROM coaches WHERE id = ?', [booking.coach_id]);
-                  
-                  // Update event with remaining bookings (or no bookings if all cancelled)
-                  // Event duration reverts to 60 minutes, but subsequent slots stay pushed
-                  await updateEventWithBooking(
-                    client,
-                    calendarId,
-                    updatedSlot.google_event_id,
-                    remainingBookings.length > 0 ? remainingBookings[0] : null,
-                    allRemainingBookings,
-                    coach?.email,
-                    { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time }
-                  );
-                }
-              }
+      // Update Google Calendar event
+      try {
+        const updatedSlot = await get('SELECT * FROM slots WHERE id = ?', [slotId]);
+        if (updatedSlot && updatedSlot.google_event_id) {
+          const auth = await getAuthorizedClient(booking.coach_id);
+          if (auth) {
+            const { client, tokenRow } = auth;
+            const calendarId = tokenRow.calendar_id;
+            if (calendarId) {
+              // Get all remaining bookings for the event
+              const allRemainingBookings = await all(
+                'SELECT * FROM bookings WHERE slot_id = ? AND status = "confirmed"',
+                [slotId]
+              );
+              
+              const coach = await get('SELECT email FROM coaches WHERE id = ?', [booking.coach_id]);
+              
+              // Update event with remaining bookings (or no bookings if all cancelled)
+              // Event duration reverts to 60 minutes, but subsequent slots stay pushed
+              await updateEventWithBooking(
+                client,
+                calendarId,
+                updatedSlot.google_event_id,
+                remainingBookings.length > 0 ? remainingBookings[0] : null,
+                allRemainingBookings,
+                coach?.email,
+                { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time }
+              );
             }
-          } catch (syncErr) {
-            console.error('Google Calendar update failed on booking cancellation:', syncErr);
-          }
-      } else if (remainingBookings.length === 2) {
-        // Still two bookings remain, but need to update shared_with_booking_id references
-        // The cancelled booking's partner needs to point to the other remaining booking
-        const cancelledId = parseInt(id);
-        const otherBooking = remainingBookings.find(b => b.id !== cancelledId);
-        const otherOtherBooking = remainingBookings.find(b => b.id !== cancelledId && b.id !== otherBooking?.id);
-        
-        if (otherBooking && sharedWithBookingId) {
-          // If the cancelled booking was paired with sharedWithBookingId, update that booking
-          if (otherOtherBooking && otherBooking.id === sharedWithBookingId) {
-            // Update the other booking to point to the remaining one
-            await run(
-              'UPDATE bookings SET shared_with_booking_id = ? WHERE id = ?',
-              [otherOtherBooking.id, otherBooking.id]
-            );
-            await run(
-              'UPDATE bookings SET shared_with_booking_id = ? WHERE id = ?',
-              [otherBooking.id, otherOtherBooking.id]
-            );
           }
         }
+      } catch (syncErr) {
+        console.error('Google Calendar update failed on booking cancellation:', syncErr);
       }
     }
 
