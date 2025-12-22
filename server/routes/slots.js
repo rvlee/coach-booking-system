@@ -74,8 +74,10 @@ router.post('/batch', authenticateToken, async (req, res) => {
       try {
         if (auth && calendarId) {
           const { client } = auth;
+          // Get coach timezone
+          const coach = await get('SELECT timezone FROM coaches WHERE id = ?', [req.user.id]);
           const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
-          const eventId = await createEvent(client, calendarId, slot, `${origin}/book/${bookingLink}`);
+          const eventId = await createEvent(client, calendarId, slot, `${origin}/book/${bookingLink}`, coach?.timezone);
           await run('UPDATE slots SET google_event_id = ? WHERE id = ?', [eventId, slot.id]);
           slot = await get('SELECT * FROM slots WHERE id = ?', [slot.id]);
         }
@@ -126,8 +128,10 @@ router.post('/', authenticateToken, async (req, res) => {
       if (auth) {
         const { client, tokenRow } = auth;
         const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
+        // Get coach timezone
+        const coach = await get('SELECT timezone FROM coaches WHERE id = ?', [req.user.id]);
         const origin = req.headers.origin || 'http://localhost:3000';
-        const eventId = await createEvent(client, calendarId, slot, `${origin}/book/${bookingLink}`);
+        const eventId = await createEvent(client, calendarId, slot, `${origin}/book/${bookingLink}`, coach?.timezone);
         await run('UPDATE slots SET google_event_id = ? WHERE id = ?', [eventId, slot.id]);
         slot = await get('SELECT * FROM slots WHERE id = ?', [slot.id]);
       }
@@ -276,8 +280,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
         if (auth) {
           const { client, tokenRow } = auth;
           const calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
+          // Get coach timezone
+          const coach = await get('SELECT timezone FROM coaches WHERE id = ?', [req.user.id]);
           const origin = process.env.FRONTEND_URL || req.headers.origin || 'http://localhost:3000';
-          await updateEvent(client, calendarId, updatedSlot.google_event_id, updatedSlot, `${origin}/book/${updatedSlot.booking_link}`);
+          await updateEvent(client, calendarId, updatedSlot.google_event_id, updatedSlot, `${origin}/book/${updatedSlot.booking_link}`, coach?.timezone);
         }
       }
     } catch (syncErr) {

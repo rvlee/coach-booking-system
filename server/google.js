@@ -210,15 +210,34 @@ export async function syncTimezoneFromGoogle(coachId) {
   }
 }
 
-export async function createEvent(client, calendarId, slot, bookingLink) {
+export async function createEvent(client, calendarId, slot, bookingLink, timezone = null) {
   const calendar = google.calendar({ version: 'v3', auth: client });
+  
+  // Get timezone from calendar if not provided
+  let eventTimezone = timezone;
+  if (!eventTimezone) {
+    try {
+      const calendarData = await calendar.calendars.get({ calendarId });
+      eventTimezone = calendarData.data.timeZone;
+    } catch (err) {
+      console.warn('Could not get timezone from calendar, using UTC:', err.message);
+      eventTimezone = 'UTC';
+    }
+  }
+  
   const event = await calendar.events.insert({
     calendarId,
     requestBody: {
       summary: `Available Slot`,
       description: `Booking link: ${bookingLink}`,
-      start: { dateTime: slot.start_time },
-      end: { dateTime: slot.end_time },
+      start: { 
+        dateTime: slot.start_time,
+        timeZone: eventTimezone
+      },
+      end: { 
+        dateTime: slot.end_time,
+        timeZone: eventTimezone
+      },
       extendedProperties: {
         private: {
           slot_id: String(slot.id),
@@ -235,16 +254,35 @@ export async function deleteEvent(client, calendarId, eventId) {
   await calendar.events.delete({ calendarId, eventId });
 }
 
-export async function updateEvent(client, calendarId, eventId, slot, bookingLink) {
+export async function updateEvent(client, calendarId, eventId, slot, bookingLink, timezone = null) {
   const calendar = google.calendar({ version: 'v3', auth: client });
+  
+  // Get timezone from calendar if not provided
+  let eventTimezone = timezone;
+  if (!eventTimezone) {
+    try {
+      const calendarData = await calendar.calendars.get({ calendarId });
+      eventTimezone = calendarData.data.timeZone;
+    } catch (err) {
+      console.warn('Could not get timezone from calendar, using UTC:', err.message);
+      eventTimezone = 'UTC';
+    }
+  }
+  
   await calendar.events.patch({
     calendarId,
     eventId,
     requestBody: {
       summary: `Available Slot`,
       description: `Booking link: ${bookingLink}`,
-      start: { dateTime: slot.start_time },
-      end: { dateTime: slot.end_time },
+      start: { 
+        dateTime: slot.start_time,
+        timeZone: eventTimezone
+      },
+      end: { 
+        dateTime: slot.end_time,
+        timeZone: eventTimezone
+      },
       extendedProperties: {
         private: {
           slot_id: String(slot.id),
@@ -255,8 +293,20 @@ export async function updateEvent(client, calendarId, eventId, slot, bookingLink
   });
 }
 
-export async function updateEventWithBooking(client, calendarId, eventId, booking, allBookings = null, coachEmail = null, timeUpdate = null) {
+export async function updateEventWithBooking(client, calendarId, eventId, booking, allBookings = null, coachEmail = null, timeUpdate = null, timezone = null) {
   const calendar = google.calendar({ version: 'v3', auth: client });
+  
+  // Get timezone from calendar if not provided
+  let eventTimezone = timezone;
+  if (!eventTimezone) {
+    try {
+      const calendarData = await calendar.calendars.get({ calendarId });
+      eventTimezone = calendarData.data.timeZone;
+    } catch (err) {
+      console.warn('Could not get timezone from calendar, using UTC:', err.message);
+      eventTimezone = 'UTC';
+    }
+  }
   
   // Use allBookings if provided (for shared classes), otherwise just use the single booking
   const bookings = allBookings || [booking];
@@ -303,8 +353,14 @@ export async function updateEventWithBooking(client, calendarId, eventId, bookin
     attendees: attendees.length > 0 ? attendees : undefined,
     // Update time if provided (for shared classes extended to 90 minutes)
     ...(timeUpdate ? {
-      start: { dateTime: timeUpdate.start_time },
-      end: { dateTime: timeUpdate.end_time }
+      start: { 
+        dateTime: timeUpdate.start_time,
+        timeZone: eventTimezone
+      },
+      end: { 
+        dateTime: timeUpdate.end_time,
+        timeZone: eventTimezone
+      }
     } : {}),
     // Preserve organizer if event already exists
     // Note: organizer cannot be changed via API, it's always the calendar owner

@@ -124,7 +124,7 @@ router.get('/settings', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Coach not found' });
     }
     res.json({
-      timezone: coach.timezone || 'America/Los_Angeles',
+      timezone: coach.timezone || null,
       daily_booking_limit: coach.daily_booking_limit,
       language: coach.language || 'en'
     });
@@ -172,7 +172,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
     );
     
     res.json({
-      timezone: updated.timezone || 'America/Los_Angeles',
+      timezone: updated.timezone || null,
       daily_booking_limit: updated.daily_booking_limit,
       language: updated.language || 'en'
     });

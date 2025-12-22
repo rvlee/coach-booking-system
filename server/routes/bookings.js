@@ -255,6 +255,9 @@ router.post('/', async (req, res) => {
           // If this is a shared class (second booking), also update the event time to 90 minutes
           const needsTimeUpdate = isShared && updatedSlot.duration_minutes === 90;
           
+          // Get coach timezone
+          const coachWithTz = await get('SELECT timezone FROM coaches WHERE id = ?', [slot.coach_id]);
+          
           // Update event with all bookings so all clients receive invites
           // For shared classes, this will:
           // 1. Add both clients as attendees
@@ -269,7 +272,8 @@ router.post('/', async (req, res) => {
             booking, 
             allSlotBookings, 
             coach?.email,
-            needsTimeUpdate ? { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time } : null
+            needsTimeUpdate ? { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time } : null,
+            coachWithTz?.timezone
           );
         }
       }
@@ -401,7 +405,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
                 [slotId]
               );
               
-              const coach = await get('SELECT email FROM coaches WHERE id = ?', [booking.coach_id]);
+              const coach = await get('SELECT email, timezone FROM coaches WHERE id = ?', [booking.coach_id]);
               
               // Update event with remaining bookings (or no bookings if all cancelled)
               // Event duration reverts to 60 minutes, but subsequent slots stay pushed
@@ -412,7 +416,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
                 remainingBookings.length > 0 ? remainingBookings[0] : null,
                 allRemainingBookings,
                 coach?.email,
-                { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time }
+                { start_time: updatedSlot.start_time, end_time: updatedSlot.end_time },
+                coach?.timezone
               );
             }
           }

@@ -99,10 +99,17 @@ router.get('/auth/callback', async (req, res) => {
       await storeTokens(coach.id, tokens, calendarId);
       console.log('Google Calendar connected successfully for coach:', coach.id);
       
-      // Sync timezone from Google Calendar (non-blocking)
-      syncTimezoneFromGoogle(coach.id).catch(err => {
-        console.error('Error syncing timezone on login (non-fatal):', err);
-      });
+      // Sync timezone from Google Calendar (synchronous - wait for it to complete)
+      try {
+        const syncedTimezone = await syncTimezoneFromGoogle(coach.id);
+        if (syncedTimezone) {
+          console.log(`Timezone synced to ${syncedTimezone} for coach ${coach.id}`);
+        } else {
+          console.warn(`Could not sync timezone for coach ${coach.id}`);
+        }
+      } catch (tzErr) {
+        console.error('Error syncing timezone on login (non-fatal):', tzErr);
+      }
       
       // Sync bookings with Google Calendar (non-blocking)
       syncBookingsWithCalendar(coach.id).catch(err => {
@@ -160,10 +167,17 @@ router.get('/callback', async (req, res) => {
     console.log('Google Calendar connected for coach:', coach_id);
     console.log('Dedicated calendar ID:', calendarId);
     
-    // Sync timezone from Google Calendar (non-blocking)
-    syncTimezoneFromGoogle(coach_id).catch(err => {
-      console.error('Error syncing timezone on calendar connection (non-fatal):', err);
-    });
+    // Sync timezone from Google Calendar (synchronous - wait for it to complete)
+    try {
+      const syncedTimezone = await syncTimezoneFromGoogle(coach_id);
+      if (syncedTimezone) {
+        console.log(`Timezone synced to ${syncedTimezone} for coach ${coach_id}`);
+      } else {
+        console.warn(`Could not sync timezone for coach ${coach_id}`);
+      }
+    } catch (tzErr) {
+      console.error('Error syncing timezone on calendar connection (non-fatal):', tzErr);
+    }
 
     res.send(
       `<html><body><script>window.close();</script><p>Google Calendar connected. You can close this window.</p></body></html>`
