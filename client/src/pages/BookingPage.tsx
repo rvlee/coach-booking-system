@@ -2,9 +2,11 @@ import { useState, useEffect, FormEvent, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Slot, BookingFormData, CoachSlotsResponse } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import './BookingPage.css';
 
 function BookingPage() {
+  const { t } = useLanguage();
   const { bookingLink } = useParams<{ bookingLink: string }>();
   const navigate = useNavigate();
   const [slot, setSlot] = useState<Slot | null>(null);
@@ -231,7 +233,7 @@ function BookingPage() {
     return (
       <div className="booking-page">
         <div className="booking-container">
-          <div className="loading">Loading...</div>
+          <div className="loading">{t.bookingPage.loading}</div>
         </div>
       </div>
     );
@@ -249,7 +251,7 @@ function BookingPage() {
       <div className="booking-page">
         <div className="booking-container">
           <div className="error-state">
-            <h2>Slot Not Available</h2>
+            <h2>{t.bookingPage.slotNotAvailable}</h2>
             <p>{error}</p>
           </div>
         </div>
@@ -264,18 +266,18 @@ function BookingPage() {
         <div className="booking-container">
           <div className="success-state">
             <div className="success-icon">✓</div>
-            <h2>Booking Confirmed!</h2>
-            <p>Your booking has been confirmed. You will receive a confirmation email shortly.</p>
+            <h2>{t.bookingPage.confirmed}</h2>
+            <p>{t.bookingPage.confirmationMessage}</p>
             <div className="booking-summary">
-              <h3>Booking Details</h3>
-              <p><strong>Name:</strong> {formData.client_name}</p>
-              <p><strong>Email:</strong> {formData.client_email}</p>
+              <h3>{t.bookingPage.details}</h3>
+              <p><strong>{t.bookingPage.name}</strong> {formData.client_name}</p>
+              <p><strong>{t.bookingPage.email}:</strong> {formData.client_email}</p>
               {bookedSlot && (
                 <>
-                  <p><strong>Time:</strong> {formatDateTime(bookedSlot.start_time)}</p>
-                  <p><strong>Duration:</strong> {bookedSlot.duration_minutes} minutes</p>
+                  <p><strong>{t.bookingPage.time}</strong> {formatDateTime(bookedSlot.start_time)}</p>
+                  <p><strong>{t.bookingPage.duration}</strong> {bookedSlot.duration_minutes} {t.bookingPage.minutes}</p>
                   {formData.willing_to_share && (
-                    <p><strong>Type:</strong> {bookedSlot.is_shared ? 'Shared Class' : 'Willing to Share'}</p>
+                    <p><strong>{t.bookingPage.type}</strong> {bookedSlot.is_shared ? t.bookings.sharedClass : t.bookings.willingToShare}</p>
                   )}
                 </>
               )}
@@ -290,23 +292,23 @@ function BookingPage() {
     <div className="booking-page">
       <div className="booking-container">
         <div className="booking-header">
-          <h1>Book Your Session</h1>
-          <p className="coach-name">with {isCoachLink ? coachName : slot?.coach_name}</p>
+          <h1>{t.bookingPage.title}</h1>
+          <p className="coach-name">{t.bookingPage.with} {isCoachLink ? coachName : slot?.coach_name}</p>
         </div>
 
         {isCoachLink ? (
           <>
             {slots.length === 0 ? (
               <div className="already-booked">
-                <h2>No available slots</h2>
-                <p>All slots have been booked. Please check back later.</p>
+                <h2>{t.bookingPage.noSlots}</h2>
+                <p>{t.bookingPage.allSlotsBooked} {t.bookingPage.checkBackLater}</p>
               </div>
             ) : (
               <>
                 {slots.length > 0 && (
                   <>
                     <div className="calendar-section">
-                      <h3>Select a Date</h3>
+                      <h3>{t.bookingPage.selectDate}</h3>
                       <div className="calendar-container">
                         <div className="calendar-header">
                           <button 
@@ -330,13 +332,13 @@ function BookingPage() {
                           </button>
                         </div>
                         <div className="calendar-weekdays">
-                          <div className="calendar-weekday">Sun</div>
-                          <div className="calendar-weekday">Mon</div>
-                          <div className="calendar-weekday">Tue</div>
-                          <div className="calendar-weekday">Wed</div>
-                          <div className="calendar-weekday">Thu</div>
-                          <div className="calendar-weekday">Fri</div>
-                          <div className="calendar-weekday">Sat</div>
+                          <div className="calendar-weekday">{t.calendar.sun}</div>
+                          <div className="calendar-weekday">{t.calendar.mon}</div>
+                          <div className="calendar-weekday">{t.calendar.tue}</div>
+                          <div className="calendar-weekday">{t.calendar.wed}</div>
+                          <div className="calendar-weekday">{t.calendar.thu}</div>
+                          <div className="calendar-weekday">{t.calendar.fri}</div>
+                          <div className="calendar-weekday">{t.calendar.sat}</div>
                         </div>
                         <div className="calendar-days">
                           {getDaysInMonth(currentMonth).map((date, idx) => {
@@ -369,7 +371,7 @@ function BookingPage() {
 
                     {selectedDate && slotsForSelectedDate.length > 0 && (
                       <div className="slots-selection">
-                        <h3>Available Times for {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h3>
+                        <h3>{t.bookingPage.availableTimes} {new Date(selectedDate).toLocaleDateString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</h3>
                         <div className="slots-grid">
                           {slotsForSelectedDate
                             .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
@@ -388,7 +390,7 @@ function BookingPage() {
                                   <div className="slot-option-duration">{s.duration_minutes} min</div>
                                   {isShareable && (
                                     <div className="slot-option-shareable">
-                                      Shared-friendly ({bookingCount}/4 spots taken)
+                                      {t.bookingPage.sharedFriendly} ({bookingCount}/4 {t.bookingPage.spotsTaken})
                                     </div>
                                   )}
                                 </button>
@@ -400,19 +402,19 @@ function BookingPage() {
 
                     {selectedDate && slotsForSelectedDate.length === 0 && (
                       <div className="no-slots-message">
-                        <p>No available time slots for this date. Please select another date.</p>
+                        <p>{t.bookingPage.noSlotsForDate}</p>
                       </div>
                     )}
 
                     {!selectedDate && (
                       <div className="select-date-message">
-                        <p>Please select a date from the calendar above to view available time slots.</p>
+                        <p>{t.bookingPage.selectDateMessage}</p>
                       </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="booking-form">
                   <div className="form-group">
-                    <label>Full Name *</label>
+                    <label>{t.bookingPage.fullName}</label>
                     <input
                       type="text"
                       value={formData.client_name}
@@ -423,7 +425,7 @@ function BookingPage() {
                   </div>
 
                   <div className="form-group">
-                    <label>Email *</label>
+                    <label>{t.bookingPage.email}</label>
                     <input
                       type="email"
                       value={formData.client_email}
@@ -434,7 +436,7 @@ function BookingPage() {
                   </div>
 
                   <div className="form-group">
-                    <label>Phone Number</label>
+                    <label>{t.bookingPage.phone}</label>
                     <input
                       type="tel"
                       value={formData.client_phone}
@@ -444,7 +446,7 @@ function BookingPage() {
                   </div>
 
                   <div className="form-group">
-                    <label>Notes (Optional)</label>
+                    <label>{t.bookingPage.notes}</label>
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -460,17 +462,17 @@ function BookingPage() {
                         checked={formData.willing_to_share}
                         onChange={(e) => setFormData({ ...formData, willing_to_share: e.target.checked })}
                       />
-                      <span>I'm willing to share this class with someone else</span>
+                      <span>{t.bookingPage.willingToShare}</span>
                     </label>
                     <small className="checkbox-hint">
-                      If checked, you may be paired with another participant. If paired, the session will be extended to 90 minutes.
+                      {t.bookingPage.willingToShareHint}
                     </small>
                   </div>
 
                   {error && <div className="error-message">{error}</div>}
 
                   <button type="submit" className="submit-booking-btn" disabled={submitting || !selectedSlotId}>
-                    {submitting ? 'Booking...' : 'Confirm Booking'}
+                    {submitting ? t.bookingPage.booking : t.bookingPage.confirm}
                   </button>
                     </form>
                   </>
@@ -482,21 +484,21 @@ function BookingPage() {
           <>
             {slot?.is_booked ? (
               <div className="already-booked">
-                <h2>This slot is already booked</h2>
-                <p>Please contact the coach for alternative times.</p>
+                <h2>{t.bookingPage.alreadyBooked}</h2>
+                <p>{t.bookingPage.contactCoach}</p>
               </div>
             ) : (
               <>
                 <div className="slot-info-card">
-                  <h3>Session Details</h3>
+                  <h3>{t.bookingPage.sessionDetails}</h3>
                   <div className="slot-details">
                     <div className="detail-row">
-                      <span className="detail-label">Date & Time</span>
+                      <span className="detail-label">{t.bookingPage.dateTime}</span>
                       <span className="detail-value">{slot ? formatDateTime(slot.start_time) : ''}</span>
                     </div>
                     <div className="detail-row">
-                      <span className="detail-label">Duration</span>
-                      <span className="detail-value">{slot?.duration_minutes} minutes</span>
+                      <span className="detail-label">{t.bookingPage.duration}</span>
+                      <span className="detail-value">{slot?.duration_minutes} {t.bookingPage.minutes}</span>
                     </div>
                   </div>
                 </div>

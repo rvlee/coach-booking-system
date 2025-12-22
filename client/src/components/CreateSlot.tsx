@@ -2,6 +2,7 @@ import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
 import axios from 'axios';
 import WeeklyCalendar from './WeeklyCalendar';
 import { CreateSlotProps, Slot, DaySetting, TimeSlotConfig, GoogleCalendarStatus, BusyPeriodWithFlag, DaySlot } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import './CreateSlot.css';
 
 function pad(value: number): string {
@@ -65,6 +66,7 @@ function buildIso(dateStr: string, time: string): string {
 }
 
 function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: CreateSlotProps) {
+  const { t } = useLanguage();
   const today = new Date().toISOString().slice(0, 10);
   const [weekStart, setWeekStart] = useState<string>(getWeekStart(today));
   const [daySettings, setDaySettings] = useState<Record<string, DaySetting>>({});
@@ -570,7 +572,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
 
   return (
     <div className="create-slot">
-      <h2>Create Slots</h2>
+      <h2>{t.createSlot.title}</h2>
       <div className="slot-grid">
         <div className="calendar-panel">
           <div className="week-nav">
@@ -594,7 +596,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           {!googleStatus.connected && (
             <div className="google-banner">
               <div>
-                <strong>Connect Google Calendar</strong>
+                <strong>{t.createSlot.connectGoogle}</strong>
                 <p>Sync slots to a dedicated calendar and see busy blocks.</p>
               </div>
               <button type="button" className="connect-btn" onClick={connectGoogle}>
@@ -606,11 +608,11 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           {googleStatus.connected && (
             <div className="google-banner connected">
               <div>
-                <strong>Google Calendar connected</strong>
+                <strong>{t.createSlot.googleConnected}</strong>
                 <p>Busy times are loaded for this week.</p>
               </div>
               <button type="button" className="secondary-btn" onClick={() => fetchWeekBusy(weekStart)} disabled={busyLoading}>
-                {busyLoading ? 'Refreshing...' : 'Refresh busy'}
+                {busyLoading ? t.createSlot.refreshing : t.createSlot.refreshBusy}
               </button>
             </div>
           )}
@@ -727,10 +729,10 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
 
           <div className="submit-section">
             <div className="slot-count">
-              {totalSlots > 0 ? `${totalSlots} slot${totalSlots === 1 ? '' : 's'} ready` : 'Enable days and configure times above'}
+              {totalSlots > 0 ? `${totalSlots} ${t.createSlot.slotsReady}` : t.createSlot.enableDays}
             </div>
             <button type="submit" className="create-btn" disabled={loading || totalSlots === 0}>
-              {loading ? 'Creating...' : 'Create All Slots'}
+              {loading ? t.createSlot.creating : t.createSlot.createAll}
             </button>
           </div>
         </form>

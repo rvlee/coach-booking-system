@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { Booking, BookingsListProps } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import './BookingsList.css';
 
 function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
+  const { t } = useLanguage();
   const [cancelling, setCancelling] = useState<Record<number, boolean>>({});
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const handleCancelBooking = async (bookingId: number): Promise<void> => {
-    if (!confirm('Are you sure you want to cancel this booking?')) return;
+    if (!confirm(t.bookingsList.cancelConfirm)) return;
 
     setCancelling({ ...cancelling, [bookingId]: true });
     try {
@@ -19,7 +21,7 @@ function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
         onBookingCancelled();
       }
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Failed to cancel booking');
+      alert(error.response?.data?.error || t.bookingsList.cancelError);
     } finally {
       setCancelling({ ...cancelling, [bookingId]: false });
     }
@@ -55,17 +57,17 @@ function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
   if (confirmedBookings.length === 0) {
     return (
       <div className="bookings-empty">
-        <p>No bookings yet. Share your booking links with clients!</p>
+        <p>{t.bookingsList.noBookings}</p>
       </div>
     );
   }
 
   return (
     <div className="bookings-list">
-      <h2>Bookings This Month</h2>
+      <h2>{t.bookingsList.thisMonth}</h2>
       {summary.length === 0 ? (
         <div className="bookings-empty">
-          <p>No bookings yet this month.</p>
+          <p>{t.bookingsList.noBookingsMonth}</p>
         </div>
       ) : (
         <>
@@ -74,14 +76,14 @@ function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
               <div key={item.email} className="booking-summary-card">
                 <div className="summary-header">
                   <div className="summary-name">{item.name}</div>
-                  <div className="summary-count">{item.count} booking{item.count > 1 ? 's' : ''}</div>
+                  <div className="summary-count">{item.count} {item.count > 1 ? t.bookingsList.bookings : t.bookingsList.booking}</div>
                 </div>
                 <div className="summary-email">{item.email}</div>
               </div>
             ))}
           </div>
           <div className="bookings-detail-section">
-            <h3>All Bookings</h3>
+            <h3>{t.bookingsList.allBookings}</h3>
             <div className="bookings-detail-list">
               {confirmedBookings
                 .sort((a, b) => {
@@ -96,18 +98,18 @@ function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
                       <div className="booking-detail-email">{booking.client_email}</div>
                       <div className="booking-detail-time">
                         {booking.start_time
-                          ? new Date(booking.start_time).toLocaleString('en-US', {
+                          ? new Date(booking.start_time).toLocaleString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', {
                               month: 'short',
                               day: 'numeric',
                               year: 'numeric',
                               hour: 'numeric',
                               minute: '2-digit'
                             })
-                          : 'Time TBD'}
+                          : t.bookingsList.timeTBD}
                       </div>
                       {booking.is_shared && booking.shared_with_name && (
                         <div className="booking-detail-shared">
-                          Shared with: {booking.shared_with_name}
+                          {t.bookingsList.sharedWith} {booking.shared_with_name}
                         </div>
                       )}
                     </div>
@@ -116,7 +118,7 @@ function BookingsList({ bookings, onBookingCancelled }: BookingsListProps) {
                       className="cancel-booking-btn"
                       disabled={cancelling[booking.id]}
                     >
-                      {cancelling[booking.id] ? 'Cancelling...' : 'Cancel'}
+                      {cancelling[booking.id] ? t.bookingsList.cancelling : t.bookingsList.cancel}
                     </button>
                   </div>
                 ))}

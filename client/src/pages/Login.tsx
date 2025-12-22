@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import './Login.css';
 
 function Login() {
   const { user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
@@ -31,7 +33,7 @@ function Login() {
     return (
       <div className="login-container">
         <div className="login-card">
-          <div className="loading">Loading...</div>
+          <div className="loading">{t.login.loading}</div>
         </div>
       </div>
     );
@@ -57,8 +59,8 @@ function Login() {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h1>Coach Booking System</h1>
-        <p className="login-subtitle">Sign in with Google to continue</p>
+        <h1>{t.login.title}</h1>
+        <p className="login-subtitle">{t.login.subtitle}</p>
 
         {error && <div className="error-message">{error}</div>}
 
@@ -69,7 +71,7 @@ function Login() {
           type="button"
         >
           {loading ? (
-            'Connecting...'
+            t.login.connecting
           ) : (
             <>
               <svg className="google-icon" viewBox="0 0 24 24">
@@ -78,13 +80,13 @@ function Login() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign in with Google
+              {t.login.signInWithGoogle}
             </>
           )}
         </button>
 
         <p className="login-note">
-          By signing in, you'll be automatically registered if you don't have an account yet.
+          {t.login.note}
         </p>
       </div>
     </div>

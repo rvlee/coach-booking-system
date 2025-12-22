@@ -85,6 +85,70 @@ export interface Translations {
     name: string;
     time: string;
     type: string;
+    loading: string;
+    slotNotAvailable: string;
+    confirmationMessage: string;
+    duration: string;
+    minutes: string;
+    selectDate: string;
+    availableTimes: string;
+    selectDateMessage: string;
+    noSlotsForDate: string;
+    sharedFriendly: string;
+    spotsTaken: string;
+    with: string;
+    allSlotsBooked: string;
+    checkBackLater: string;
+    contactCoach: string;
+    sessionDetails: string;
+    dateTime: string;
+  };
+  login: {
+    title: string;
+    subtitle: string;
+    signInWithGoogle: string;
+    connecting: string;
+    note: string;
+    loading: string;
+  };
+  bookingsList: {
+    thisMonth: string;
+    noBookings: string;
+    noBookingsMonth: string;
+    allBookings: string;
+    booking: string;
+    bookings: string;
+    cancel: string;
+    cancelling: string;
+    cancelConfirm: string;
+    cancelError: string;
+    sharedWith: string;
+    timeTBD: string;
+  };
+  slotsList: {
+    yourSlots: string;
+    noSlots: string;
+    startDate: string;
+    startTime: string;
+    endTime: string;
+    duration: string;
+    save: string;
+    cancel: string;
+    saving: string;
+    available: string;
+    booked: string;
+    copy: string;
+    noBookingLink: string;
+  };
+  calendar: {
+    selectDate: string;
+    sun: string;
+    mon: string;
+    tue: string;
+    wed: string;
+    thu: string;
+    fri: string;
+    sat: string;
   };
 }
 
@@ -173,7 +237,71 @@ export const translations: Record<Language, Translations> = {
       details: 'Booking Details',
       name: 'Name:',
       time: 'Time:',
-      type: 'Type:'
+      type: 'Type:',
+      loading: 'Loading...',
+      slotNotAvailable: 'Slot Not Available',
+      confirmationMessage: 'Your booking has been confirmed. You will receive a confirmation email shortly.',
+      duration: 'Duration:',
+      minutes: 'minutes',
+      selectDate: 'Select a Date',
+      availableTimes: 'Available Times for',
+      selectDateMessage: 'Please select a date from the calendar above to view available time slots.',
+      noSlotsForDate: 'No available time slots for this date. Please select another date.',
+      sharedFriendly: 'Shared-friendly',
+      spotsTaken: 'spots taken',
+      with: 'with',
+      allSlotsBooked: 'All slots have been booked.',
+      checkBackLater: 'Please check back later.',
+      contactCoach: 'Please contact the coach for alternative times.',
+      sessionDetails: 'Session Details',
+      dateTime: 'Date & Time'
+    },
+    login: {
+      title: 'Coach Booking System',
+      subtitle: 'Sign in with Google to continue',
+      signInWithGoogle: 'Sign in with Google',
+      connecting: 'Connecting...',
+      note: "By signing in, you'll be automatically registered if you don't have an account yet.",
+      loading: 'Loading...'
+    },
+    bookingsList: {
+      thisMonth: 'Bookings This Month',
+      noBookings: 'No bookings yet. Share your booking links with clients!',
+      noBookingsMonth: 'No bookings yet this month.',
+      allBookings: 'All Bookings',
+      booking: 'booking',
+      bookings: 'bookings',
+      cancel: 'Cancel',
+      cancelling: 'Cancelling...',
+      cancelConfirm: 'Are you sure you want to cancel this booking?',
+      cancelError: 'Failed to cancel booking',
+      sharedWith: 'Shared with:',
+      timeTBD: 'Time TBD'
+    },
+    slotsList: {
+      yourSlots: 'Your Slots',
+      noSlots: 'No slots created yet. Create your first slot above!',
+      startDate: 'Start Date',
+      startTime: 'Start Time',
+      endTime: 'End Time',
+      duration: 'Duration (minutes)',
+      save: 'Save',
+      cancel: 'Cancel',
+      saving: 'Saving...',
+      available: 'Available',
+      booked: 'Booked',
+      copy: 'Copy',
+      noBookingLink: 'No booking link available'
+    },
+    calendar: {
+      selectDate: 'Select a Date',
+      sun: 'Sun',
+      mon: 'Mon',
+      tue: 'Tue',
+      wed: 'Wed',
+      thu: 'Thu',
+      fri: 'Fri',
+      sat: 'Sat'
     }
   },
   'zh-TW': {
@@ -260,7 +388,71 @@ export const translations: Record<Language, Translations> = {
       details: '預約詳情',
       name: '姓名：',
       time: '時間：',
-      type: '類型：'
+      type: '類型：',
+      loading: '載入中...',
+      slotNotAvailable: '時段不可用',
+      confirmationMessage: '您的預約已確認。您將很快收到確認電子郵件。',
+      duration: '時長：',
+      minutes: '分鐘',
+      selectDate: '選擇日期',
+      availableTimes: '可用時間',
+      selectDateMessage: '請從上方日曆選擇日期以查看可用時段。',
+      noSlotsForDate: '此日期無可用時段。請選擇其他日期。',
+      sharedFriendly: '可共享',
+      spotsTaken: '個位置已預約',
+      with: '與',
+      allSlotsBooked: '所有時段已被預約。',
+      checkBackLater: '請稍後再查看。',
+      contactCoach: '請聯繫教練以獲取其他時間。',
+      sessionDetails: '課程詳情',
+      dateTime: '日期與時間'
+    },
+    login: {
+      title: '教練預約系統',
+      subtitle: '使用 Google 登入以繼續',
+      signInWithGoogle: '使用 Google 登入',
+      connecting: '連接中...',
+      note: '登入後，如果您還沒有帳戶，系統將自動為您註冊。',
+      loading: '載入中...'
+    },
+    bookingsList: {
+      thisMonth: '本月預約',
+      noBookings: '尚無預約。與客戶分享您的預約連結！',
+      noBookingsMonth: '本月尚無預約。',
+      allBookings: '所有預約',
+      booking: '個預約',
+      bookings: '個預約',
+      cancel: '取消',
+      cancelling: '取消中...',
+      cancelConfirm: '您確定要取消此預約嗎？',
+      cancelError: '取消預約失敗',
+      sharedWith: '共享對象：',
+      timeTBD: '時間待定'
+    },
+    slotsList: {
+      yourSlots: '您的時段',
+      noSlots: '尚未建立時段。請在上方建立您的第一個時段！',
+      startDate: '開始日期',
+      startTime: '開始時間',
+      endTime: '結束時間',
+      duration: '時長（分鐘）',
+      save: '儲存',
+      cancel: '取消',
+      saving: '儲存中...',
+      available: '可預約',
+      booked: '已預約',
+      copy: '複製',
+      noBookingLink: '無可用預約連結'
+    },
+    calendar: {
+      selectDate: '選擇日期',
+      sun: '日',
+      mon: '一',
+      tue: '二',
+      wed: '三',
+      thu: '四',
+      fri: '五',
+      sat: '六'
     }
   }
 };

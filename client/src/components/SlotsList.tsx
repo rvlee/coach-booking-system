@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { SlotsListProps, Slot, SlotEditData, BookingLinkResponse } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 import './SlotsList.css';
 
 function pad(value: number): string {
@@ -26,6 +27,7 @@ function formatDateTimeForInput(dateString: string): DateTimeInput {
 }
 
 function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
+  const { t } = useLanguage();
   const [deleting, setDeleting] = useState<Record<number, boolean>>({});
   const [editing, setEditing] = useState<Record<number, boolean>>({});
   const [editData, setEditData] = useState<Record<number, SlotEditData>>({});
@@ -251,11 +253,11 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
               className="booking-link-input-small"
             />
             <button onClick={copyBookingLink} className="copy-link-btn-small">
-              Copy
+              {t.slotsList.copy}
             </button>
           </div>
         ) : (
-          <div className="booking-link-error">No booking link available</div>
+          <div className="booking-link-error">{t.slotsList.noBookingLink}</div>
         )}
       </div>
     </div>
@@ -264,10 +266,10 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
   if (slots.length === 0) {
     return (
       <div className="slots-list">
-        <h2>Your Slots</h2>
+        <h2>{t.slotsList.yourSlots}</h2>
         {renderBookingLink()}
         <div className="slots-empty">
-          <p>No slots created yet. Create your first slot above!</p>
+          <p>{t.slotsList.noSlots}</p>
         </div>
       </div>
     );
@@ -275,7 +277,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
 
   return (
     <div className="slots-list">
-      <h2>Your Slots</h2>
+      <h2>{t.slotsList.yourSlots}</h2>
       {renderBookingLink()}
       <div className="slots-grid">
         {slots.map((slot) => (
@@ -284,7 +286,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
               <div className="slot-edit-form">
                 <div className="edit-form-row">
                   <div className="edit-form-group">
-                    <label>Start Date</label>
+                    <label>{t.slotsList.startDate}</label>
                     <input
                       type="date"
                       value={editData[slot.id]?.start_date || ''}
@@ -292,7 +294,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
                     />
                   </div>
                   <div className="edit-form-group">
-                    <label>Start Time</label>
+                    <label>{t.slotsList.startTime}</label>
                     <input
                       type="time"
                       value={editData[slot.id]?.start_time || ''}
@@ -302,7 +304,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
                 </div>
                 <div className="edit-form-row">
                   <div className="edit-form-group">
-                    <label>End Time</label>
+                    <label>{t.slotsList.endTime}</label>
                     <input
                       type="time"
                       value={editData[slot.id]?.end_time || ''}
@@ -310,7 +312,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
                     />
                   </div>
                   <div className="edit-form-group duration-group">
-                    <label>Duration (minutes)</label>
+                    <label>{t.slotsList.duration}</label>
                     <input
                       type="number"
                       min="15"
@@ -326,14 +328,14 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
                     className="save-btn"
                     disabled={saving[slot.id]}
                   >
-                    {saving[slot.id] ? 'Saving...' : 'Save'}
+                    {saving[slot.id] ? t.slotsList.saving : t.slotsList.save}
                   </button>
                   <button
                     onClick={() => handleCancelEdit(slot.id)}
                     className="cancel-btn"
                     disabled={saving[slot.id]}
                   >
-                    Cancel
+                    {t.slotsList.cancel}
                   </button>
                 </div>
               </div>
@@ -342,12 +344,12 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
                 <div className="slot-content-compact">
                   <div className="slot-main-info">
                     <div className="slot-time-compact">
-                      {formatDateTime(slot.start_time)} - {new Date(slot.end_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      {formatDateTime(slot.start_time)} - {new Date(slot.end_time).toLocaleTimeString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
                     </div>
                     <div className="slot-meta-compact">
                       <span className="slot-duration-compact">{slot.duration_minutes} min</span>
                       <span className={`slot-status-compact ${slot.is_booked ? 'booked' : 'available'}`}>
-                        {slot.is_booked ? 'Booked' : 'Available'}
+                        {slot.is_booked ? t.slotsList.booked : t.slotsList.available}
                       </span>
                     </div>
                   </div>
