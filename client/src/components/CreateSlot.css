@@ -863,6 +863,16 @@
   text-align: center;
 }
 
+.info-message {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  border: 1px solid #90caf9;
+}
+
 .booking-link-section {
   background: #f0f4ff;
   border: 2px solid #667eea;

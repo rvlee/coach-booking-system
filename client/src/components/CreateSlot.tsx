@@ -72,6 +72,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const [daySettings, setDaySettings] = useState<Record<string, DaySetting>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [info, setInfo] = useState<string>('');
   const [googleStatus, setGoogleStatus] = useState<GoogleCalendarStatus>({ connected: false, calendar_id: null });
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [busyByDate, setBusyByDate] = useState<Record<string, BusyPeriodWithFlag[]>>({});
@@ -585,6 +586,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
 
     try {
@@ -596,29 +598,29 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
         return;
       }
 
-      // Check for overlaps with existing slots and Google Calendar busy times
-      const overlappingSlots: string[] = [];
-      
-      allSlots.forEach((slot) => {
-        if (!slot.date) return;
+      // Filter out slots that overlap with existing created slots
+      // Collect warnings for Google Calendar overlaps
+      const googleCalendarWarnings: string[] = [];
+      const filteredSlots = allSlots.filter((slot) => {
+        if (!slot.date) return false;
         const slotDate = slot.date;
         const slotStart = buildIso(slot.date, slot.start);
         const slotEnd = buildIso(slot.date, slot.end);
         const busyBlocks = busyByDate[slotDate] || [];
         
         // Check overlaps with existing created slots (from "Your Slots")
+        // If overlaps with existing slot, filter it out (don't create it)
         const existingSlots = busyBlocks.filter((busy) => {
           return busy.isCreatedSlot === true;
         });
         
         if (checkOverlap(slotStart, slotEnd, existingSlots)) {
-          const slotDateObj = new Date(slotDate);
-          const dateStr = slotDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          const slotTime = `${slot.start} - ${slot.end}`;
-          overlappingSlots.push(`${dateStr} at ${slotTime} (overlaps with existing slot)`);
+          // Skip this slot - it overlaps with an existing created slot
+          return false;
         }
         
-        // Also check overlaps with Google Calendar busy times if connected
+        // Check overlaps with Google Calendar busy times if connected
+        // Show warning but still allow creation
         if (googleStatus.connected) {
           const googleBusyBlocks = busyBlocks.filter((busy) => {
             return !busy.isCreatedSlot;
@@ -628,22 +630,41 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
             const slotDateObj = new Date(slotDate);
             const dateStr = slotDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const slotTime = `${slot.start} - ${slot.end}`;
-            // Only add if not already in the list
-            const overlapStr = `${dateStr} at ${slotTime} (overlaps with Google Calendar)`;
-            if (!overlappingSlots.includes(overlapStr)) {
-              overlappingSlots.push(overlapStr);
+            const warningStr = `${dateStr} at ${slotTime} (overlaps with Google Calendar event)`;
+            if (!googleCalendarWarnings.includes(warningStr)) {
+              googleCalendarWarnings.push(warningStr);
             }
           }
         }
+        
+        return true; // Include this slot
       });
-      
-      if (overlappingSlots.length > 0) {
-        setError(`Cannot create slots - the following times have conflicts:\n${overlappingSlots.join('\n')}`);
+
+      // Show warnings for Google Calendar overlaps but continue
+      if (googleCalendarWarnings.length > 0) {
+        const warningMessage = `Warning: The following times overlap with Google Calendar events:\n${googleCalendarWarnings.join('\n')}\n\nThese slots will still be created.`;
+        alert(warningMessage);
+      }
+
+      // Check if we have any slots to create after filtering
+      if (filteredSlots.length === 0) {
+        setError('All selected time slots overlap with existing slots. No new slots will be created.');
         setLoading(false);
         return;
       }
 
-      const slotsPayload = allSlots.map((slot) => ({
+      // If some slots were filtered out, show info message
+      if (filteredSlots.length < allSlots.length) {
+        const skippedCount = allSlots.length - filteredSlots.length;
+        const infoMessage = `${skippedCount} slot(s) were skipped because they overlap with existing slots. ${filteredSlots.length} slot(s) will be created.`;
+        setInfo(infoMessage);
+        // Clear info after 5 seconds
+        setTimeout(() => setInfo(''), 5000);
+      } else {
+        setInfo('');
+      }
+
+      const slotsPayload = filteredSlots.map((slot) => ({
         start_time: buildIso(slot.date!, slot.start),
         end_time: buildIso(slot.date!, slot.end),
         duration_minutes: Number(slot.duration)
@@ -964,6 +985,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           )}
 
           {error && <div className="error-message">{error}</div>}
+          {info && <div className="info-message">{info}</div>}
 
           <div className="submit-section">
             <div className="slot-count">
