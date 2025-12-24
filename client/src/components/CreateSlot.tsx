@@ -78,6 +78,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const [busyLoading, setBusyLoading] = useState<boolean>(false);
   const [busyError, setBusyError] = useState<string>('');
   const [createdSlots, setCreatedSlots] = useState<Slot[]>([]);
+  const [copyToSourceDate, setCopyToSourceDate] = useState<string | null>(null);
+  const [copyToTargetDates, setCopyToTargetDates] = useState<Set<string>>(new Set());
 
   const weekDays = getWeekDays(weekStart);
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -169,16 +171,18 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
     setDaySettings(settings);
   };
 
-  const copyDaySettings = (fromDate: string, toDate: string): void => {
+  const copyDaySettings = (fromDate: string, toDates: string[]): void => {
     const settings = { ...daySettings };
     const sourceDay = settings[fromDate];
     
     if (!sourceDay || !sourceDay.timeSlots || sourceDay.timeSlots.length === 0) {
-      // If source day has no slots, just enable the target day with empty slots
-      settings[toDate] = {
-        enabled: false,
-        timeSlots: []
-      };
+      // If source day has no slots, just set target days with empty slots
+      toDates.forEach(toDate => {
+        settings[toDate] = {
+          enabled: false,
+          timeSlots: []
+        };
+      });
     } else {
       // Deep copy the time slots array
       const copiedSlots = sourceDay.timeSlots.map(slot => ({
@@ -187,13 +191,44 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
         duration: slot.duration
       }));
       
-      settings[toDate] = {
-        enabled: sourceDay.enabled,
-        timeSlots: copiedSlots
-      };
+      // Copy to all target dates
+      toDates.forEach(toDate => {
+        settings[toDate] = {
+          enabled: sourceDay.enabled,
+          timeSlots: [...copiedSlots]
+        };
+      });
     }
     
     setDaySettings(settings);
+  };
+
+  const handleCopyToClick = (sourceDate: string): void => {
+    setCopyToSourceDate(sourceDate);
+    setCopyToTargetDates(new Set());
+  };
+
+  const handleCopyToToggleDay = (targetDate: string): void => {
+    const newTargets = new Set(copyToTargetDates);
+    if (newTargets.has(targetDate)) {
+      newTargets.delete(targetDate);
+    } else {
+      newTargets.add(targetDate);
+    }
+    setCopyToTargetDates(newTargets);
+  };
+
+  const handleCopyToConfirm = (): void => {
+    if (copyToSourceDate && copyToTargetDates.size > 0) {
+      copyDaySettings(copyToSourceDate, Array.from(copyToTargetDates));
+      setCopyToSourceDate(null);
+      setCopyToTargetDates(new Set());
+    }
+  };
+
+  const handleCopyToCancel = (): void => {
+    setCopyToSourceDate(null);
+    setCopyToTargetDates(new Set());
   };
 
   const generateSlots = (start: string, end: string, dur: number): DaySlot[] => {
@@ -669,31 +704,15 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
                       </label>
                     </div>
                     <div className="day-actions">
-                      {weekDays.filter(d => d !== date && daySettings[d]?.timeSlots?.length > 0).length > 0 && (
-                        <select
-                          className="copy-from-select"
-                          value=""
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              copyDaySettings(e.target.value, date);
-                              e.target.value = ''; // Reset dropdown
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
+                      {settings.enabled && timeSlots.length > 0 && (
+                        <button
+                          type="button"
+                          className="copy-to-btn"
+                          onClick={() => handleCopyToClick(date)}
+                          title={t.createSlot.copyTo}
                         >
-                          <option value="">{t.createSlot.copyFrom}</option>
-                          {weekDays
-                            .filter(d => d !== date && daySettings[d]?.timeSlots?.length > 0)
-                            .map((sourceDate) => {
-                              const sourceDay = new Date(sourceDate);
-                              const sourceDayName = dayNames[weekDays.indexOf(sourceDate)];
-                              return (
-                                <option key={sourceDate} value={sourceDate}>
-                                  {sourceDayName} ({sourceDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
-                                </option>
-                              );
-                            })}
-                        </select>
+                          {t.createSlot.copyTo}
+                        </button>
                       )}
                       {busy.length > 0 && (
                         <span className="busy-badge">{busy.length} busy</span>
@@ -779,6 +798,73 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
               );
             })}
           </div>
+
+          {/* Copy To Modal */}
+          {copyToSourceDate && (
+            <div className="copy-to-modal-overlay" onClick={handleCopyToCancel}>
+              <div className="copy-to-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="copy-to-modal-header">
+                  <h3>{t.createSlot.copyToTitle}</h3>
+                  <button
+                    type="button"
+                    className="copy-to-close-btn"
+                    onClick={handleCopyToCancel}
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="copy-to-modal-body">
+                  <p className="copy-to-source-info">
+                    {t.createSlot.copyToSource}: <strong>{dayNames[weekDays.indexOf(copyToSourceDate)]}</strong> ({new Date(copyToSourceDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
+                  </p>
+                  <p className="copy-to-instruction">{t.createSlot.copyToInstruction}</p>
+                  <div className="copy-to-days-grid">
+                    {weekDays
+                      .filter(d => d !== copyToSourceDate)
+                      .map((targetDate) => {
+                        const targetDay = new Date(targetDate);
+                        const targetDayName = dayNames[weekDays.indexOf(targetDate)];
+                        const isSelected = copyToTargetDates.has(targetDate);
+                        return (
+                          <label
+                            key={targetDate}
+                            className={`copy-to-day-option ${isSelected ? 'selected' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleCopyToToggleDay(targetDate)}
+                            />
+                            <div className="copy-to-day-info">
+                              <strong>{targetDayName}</strong>
+                              <span>{targetDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </div>
+                <div className="copy-to-modal-footer">
+                  <button
+                    type="button"
+                    className="copy-to-cancel-btn"
+                    onClick={handleCopyToCancel}
+                  >
+                    {t.createSlot.cancel}
+                  </button>
+                  <button
+                    type="button"
+                    className="copy-to-confirm-btn"
+                    onClick={handleCopyToConfirm}
+                    disabled={copyToTargetDates.size === 0}
+                  >
+                    {t.createSlot.copyToConfirm} ({copyToTargetDates.size})
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && <div className="error-message">{error}</div>}
 

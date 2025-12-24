@@ -352,7 +352,7 @@ router.post('/delete-batch', authenticateToken, async (req, res) => {
         // Delete from database
         await run('DELETE FROM slots WHERE id = ?', [slot.id]);
         deletedIds.push(slot.id);
-      } catch (err: any) {
+      } catch (err) {
         console.error(`Error deleting slot ${slot.id}:`, err);
         errors.push({ id: slot.id, error: err.message || 'Failed to delete slot' });
       }

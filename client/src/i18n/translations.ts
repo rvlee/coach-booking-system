@@ -56,7 +56,7 @@ export interface Translations {
     duration: string;
     notes: string;
   };
-  createSlot: {
+    createSlot: {
     title: string;
     connectGoogle: string;
     googleConnected: string;
@@ -66,7 +66,11 @@ export interface Translations {
     creating: string;
     slotsReady: string;
     enableDays: string;
-    copyFrom: string;
+    copyTo: string;
+    copyToTitle: string;
+    copyToSource: string;
+    copyToInstruction: string;
+    copyToConfirm: string;
   };
   bookingPage: {
     title: string;
@@ -228,7 +232,11 @@ export const translations: Record<Language, Translations> = {
       creating: 'Creating...',
       slotsReady: 'slot(s) ready',
       enableDays: 'Enable days and configure times above',
-      copyFrom: 'Copy from...'
+      copyTo: 'Copy to...',
+      copyToTitle: 'Copy Time Slots to Other Days',
+      copyToSource: 'Copying from',
+      copyToInstruction: 'Select which days of the week to copy these time slots to:',
+      copyToConfirm: 'Copy to Selected Days'
     },
     bookingPage: {
       title: 'Book Your Session',
@@ -384,7 +392,11 @@ export const translations: Record<Language, Translations> = {
       creating: '建立中...',
       slotsReady: '個時段已準備就緒',
       enableDays: '請在上方啟用日期並設定時間',
-      copyFrom: '複製自...'
+      copyTo: '複製到...',
+      copyToTitle: '複製時段到其他日期',
+      copyToSource: '複製來源',
+      copyToInstruction: '選擇要將這些時段複製到一週中的哪些日期：',
+      copyToConfirm: '複製到所選日期'
     },
     bookingPage: {
       title: '預約您的課程',

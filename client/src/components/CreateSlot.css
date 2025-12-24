@@ -251,27 +251,198 @@
   gap: 0.75rem;
 }
 
-.copy-from-select {
+.copy-to-btn {
   padding: 0.4rem 0.75rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid #667eea;
   border-radius: 6px;
   background: white;
-  font-size: 0.85rem;
   color: #667eea;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  min-width: 140px;
 }
 
-.copy-from-select:hover {
+.copy-to-btn:hover {
+  background: #667eea;
+  color: white;
+}
+
+/* Copy To Modal */
+.copy-to-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.copy-to-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.copy-to-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.copy-to-modal-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.copy-to-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.copy-to-close-btn:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.copy-to-modal-body {
+  padding: 1.5rem;
+  flex: 1;
+}
+
+.copy-to-source-info {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.copy-to-source-info strong {
+  color: #667eea;
+}
+
+.copy-to-instruction {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.copy-to-days-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.copy-to-day-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.copy-to-day-option:hover {
   border-color: #667eea;
   background: #f8f9ff;
 }
 
-.copy-from-select:focus {
-  outline: none;
+.copy-to-day-option.selected {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: #f0f4ff;
+}
+
+.copy-to-day-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.copy-to-day-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.copy-to-day-info strong {
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.copy-to-day-info span {
+  color: #666;
+  font-size: 0.8rem;
+}
+
+.copy-to-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+.copy-to-cancel-btn,
+.copy-to-confirm-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.copy-to-cancel-btn {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.copy-to-cancel-btn:hover {
+  background: #e0e0e0;
+}
+
+.copy-to-confirm-btn {
+  background: #667eea;
+  color: white;
+}
+
+.copy-to-confirm-btn:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.copy-to-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .day-checkbox {
