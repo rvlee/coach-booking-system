@@ -71,6 +71,7 @@ export interface Translations {
     copyToSource: string;
     copyToInstruction: string;
     copyToConfirm: string;
+    cancel: string;
   };
   bookingPage: {
     title: string;
@@ -235,8 +236,9 @@ export const translations: Record<Language, Translations> = {
       copyTo: 'Copy to...',
       copyToTitle: 'Copy Time Slots to Other Days',
       copyToSource: 'Copying from',
-      copyToInstruction: 'Select which days of the week to copy these time slots to:',
-      copyToConfirm: 'Copy to Selected Days'
+      copyToInstruction: 'Select dates from the calendar to copy these time slots to:',
+      copyToConfirm: 'Copy to Selected Days',
+      cancel: 'Cancel'
     },
     bookingPage: {
       title: 'Book Your Session',
@@ -399,8 +401,9 @@ export const translations: Record<Language, Translations> = {
       copyTo: '複製到...',
       copyToTitle: '複製時段到其他日期',
       copyToSource: '複製來源',
-      copyToInstruction: '選擇要將這些時段複製到一週中的哪些日期：',
-      copyToConfirm: '複製到所選日期'
+      copyToInstruction: '從日曆中選擇要將這些時段複製到的日期：',
+      copyToConfirm: '複製到所選日期',
+      cancel: '取消'
     },
     bookingPage: {
       title: '預約您的課程',

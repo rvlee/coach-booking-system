@@ -80,6 +80,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const [createdSlots, setCreatedSlots] = useState<Slot[]>([]);
   const [copyToSourceDate, setCopyToSourceDate] = useState<string | null>(null);
   const [copyToTargetDates, setCopyToTargetDates] = useState<Set<string>>(new Set());
+  const [copyToCalendarMonth, setCopyToCalendarMonth] = useState<Date>(new Date());
 
   const weekDays = getWeekDays(weekStart);
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -209,6 +210,9 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   };
 
   const handleCopyToToggleDay = (targetDate: string): void => {
+    // Don't allow selecting the source date
+    if (targetDate === copyToSourceDate) return;
+    
     const newTargets = new Set(copyToTargetDates);
     if (newTargets.has(targetDate)) {
       newTargets.delete(targetDate);
@@ -216,6 +220,63 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
       newTargets.add(targetDate);
     }
     setCopyToTargetDates(newTargets);
+  };
+
+  const getDaysInMonth = (date: Date): Date[] => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const days: Date[] = [];
+    
+    // Add days from previous month to fill the first week
+    const startDay = firstDay.getDay();
+    for (let i = startDay - 1; i >= 0; i--) {
+      const prevDate = new Date(year, month, -i);
+      days.push(prevDate);
+    }
+    
+    // Add all days of current month
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    // Add days from next month to fill the last week
+    const remainingDays = 42 - days.length; // 6 weeks * 7 days
+    for (let day = 1; day <= remainingDays; day++) {
+      days.push(new Date(year, month + 1, day));
+    }
+    
+    return days;
+  };
+
+  const getDateString = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const isDateInPast = (date: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    return checkDate < today;
+  };
+
+  const isCurrentMonth = (date: Date): boolean => {
+    return date.getMonth() === copyToCalendarMonth.getMonth() && 
+           date.getFullYear() === copyToCalendarMonth.getFullYear();
+  };
+
+  const navigateCopyToMonth = (direction: 'prev' | 'next'): void => {
+    setCopyToCalendarMonth((prev) => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
   };
 
   const handleCopyToConfirm = (): void => {
@@ -229,6 +290,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const handleCopyToCancel = (): void => {
     setCopyToSourceDate(null);
     setCopyToTargetDates(new Set());
+    setCopyToCalendarMonth(new Date());
   };
 
   const generateSlots = (start: string, end: string, dur: number): DaySlot[] => {
@@ -819,30 +881,65 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
                     {t.createSlot.copyToSource}: <strong>{dayNames[weekDays.indexOf(copyToSourceDate)]}</strong> ({new Date(copyToSourceDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
                   </p>
                   <p className="copy-to-instruction">{t.createSlot.copyToInstruction}</p>
-                  <div className="copy-to-days-grid">
-                    {weekDays
-                      .filter(d => d !== copyToSourceDate)
-                      .map((targetDate) => {
-                        const targetDay = new Date(targetDate);
-                        const targetDayName = dayNames[weekDays.indexOf(targetDate)];
-                        const isSelected = copyToTargetDates.has(targetDate);
+                  <div className="copy-to-calendar-container">
+                    <div className="copy-to-calendar-header">
+                      <button 
+                        type="button" 
+                        className="copy-to-calendar-nav-btn"
+                        onClick={() => navigateCopyToMonth('prev')}
+                        aria-label="Previous month"
+                      >
+                        ‹
+                      </button>
+                      <h4 className="copy-to-calendar-month">
+                        {copyToCalendarMonth.toLocaleString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { month: 'long', year: 'numeric' })}
+                      </h4>
+                      <button 
+                        type="button" 
+                        className="copy-to-calendar-nav-btn"
+                        onClick={() => navigateCopyToMonth('next')}
+                        aria-label="Next month"
+                      >
+                        ›
+                      </button>
+                    </div>
+                    <div className="copy-to-calendar-weekdays">
+                      <div className="copy-to-calendar-weekday">{t.calendar.sun}</div>
+                      <div className="copy-to-calendar-weekday">{t.calendar.mon}</div>
+                      <div className="copy-to-calendar-weekday">{t.calendar.tue}</div>
+                      <div className="copy-to-calendar-weekday">{t.calendar.wed}</div>
+                      <div className="copy-to-calendar-weekday">{t.calendar.thu}</div>
+                      <div className="copy-to-calendar-weekday">{t.calendar.fri}</div>
+                      <div className="copy-to-calendar-weekday">{t.calendar.sat}</div>
+                    </div>
+                    <div className="copy-to-calendar-days">
+                      {getDaysInMonth(copyToCalendarMonth).map((date, idx) => {
+                        const dateStr = getDateString(date);
+                        const isPast = isDateInPast(date);
+                        const isSourceDate = dateStr === copyToSourceDate;
+                        const isSelected = copyToTargetDates.has(dateStr);
+                        const currentMonthDay = isCurrentMonth(date);
+                        
                         return (
-                          <label
-                            key={targetDate}
-                            className={`copy-to-day-option ${isSelected ? 'selected' : ''}`}
+                          <button
+                            key={idx}
+                            type="button"
+                            className={`copy-to-calendar-day ${!currentMonthDay ? 'other-month' : ''} ${isPast ? 'past' : ''} ${isSourceDate ? 'source-date' : ''} ${isSelected ? 'selected' : ''}`}
+                            onClick={() => !isPast && !isSourceDate && handleCopyToToggleDay(dateStr)}
+                            disabled={isPast || isSourceDate}
+                            aria-label={`${date.toLocaleDateString()} ${isSelected ? 'Selected' : 'Not selected'}`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleCopyToToggleDay(targetDate)}
-                            />
-                            <div className="copy-to-day-info">
-                              <strong>{targetDayName}</strong>
-                              <span>{targetDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                            </div>
-                          </label>
+                            <span className="copy-to-calendar-day-number">{date.getDate()}</span>
+                            {isSelected && (
+                              <span className="copy-to-calendar-day-check">✓</span>
+                            )}
+                            {isSourceDate && (
+                              <span className="copy-to-calendar-day-source">源</span>
+                            )}
+                          </button>
                         );
                       })}
+                    </div>
                   </div>
                 </div>
                 <div className="copy-to-modal-footer">
