@@ -108,3 +108,6 @@ GOOGLE_REDIRECT_URI=https://your-backend.railway.app/api/google/auth/callback
 - Remove `/api/auth/login` and `/api/auth/register` routes
 - Remove email/password fields from database (optional)
 
+
+
+

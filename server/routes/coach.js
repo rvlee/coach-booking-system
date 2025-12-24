@@ -124,9 +124,9 @@ router.get('/settings', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Coach not found' });
     }
     res.json({
-      timezone: coach.timezone || null,
+      timezone: coach.timezone || 'Asia/Taipei',
       daily_booking_limit: coach.daily_booking_limit,
-      language: coach.language || 'en'
+      language: coach.language || 'zh-TW'
     });
   } catch (error) {
     console.error('Error fetching coach settings:', error);
@@ -157,14 +157,32 @@ router.put('/settings', authenticateToken, async (req, res) => {
       }
     }
     
-    await run(
-      `UPDATE coaches 
-       SET timezone = COALESCE(?, timezone),
-           daily_booking_limit = ?,
-           language = COALESCE(?, language)
-       WHERE id = ?`,
-      [timezone || null, daily_booking_limit !== undefined ? daily_booking_limit : null, language || null, req.user.id]
-    );
+    // Build update query dynamically to handle null values properly
+    const updates = [];
+    const params = [];
+    
+    if (timezone !== undefined) {
+      updates.push('timezone = ?');
+      params.push(timezone || null);
+    }
+    
+    if (daily_booking_limit !== undefined) {
+      updates.push('daily_booking_limit = ?');
+      params.push(daily_booking_limit !== null && daily_booking_limit !== '' ? daily_booking_limit : null);
+    }
+    
+    if (language !== undefined) {
+      updates.push('language = ?');
+      params.push(language || null);
+    }
+    
+    if (updates.length > 0) {
+      params.push(req.user.id);
+      await run(
+        `UPDATE coaches SET ${updates.join(', ')} WHERE id = ?`,
+        params
+      );
+    }
     
     const updated = await get(
       'SELECT timezone, daily_booking_limit, language FROM coaches WHERE id = ?',
@@ -172,9 +190,9 @@ router.put('/settings', authenticateToken, async (req, res) => {
     );
     
     res.json({
-      timezone: updated.timezone || null,
+      timezone: updated.timezone || 'Asia/Taipei',
       daily_booking_limit: updated.daily_booking_limit,
-      language: updated.language || 'en'
+      language: updated.language || 'zh-TW'
     });
   } catch (error) {
     console.error('Error updating coach settings:', error);

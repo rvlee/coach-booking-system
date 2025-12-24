@@ -169,6 +169,33 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
     setDaySettings(settings);
   };
 
+  const copyDaySettings = (fromDate: string, toDate: string): void => {
+    const settings = { ...daySettings };
+    const sourceDay = settings[fromDate];
+    
+    if (!sourceDay || !sourceDay.timeSlots || sourceDay.timeSlots.length === 0) {
+      // If source day has no slots, just enable the target day with empty slots
+      settings[toDate] = {
+        enabled: false,
+        timeSlots: []
+      };
+    } else {
+      // Deep copy the time slots array
+      const copiedSlots = sourceDay.timeSlots.map(slot => ({
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        duration: slot.duration
+      }));
+      
+      settings[toDate] = {
+        enabled: sourceDay.enabled,
+        timeSlots: copiedSlots
+      };
+    }
+    
+    setDaySettings(settings);
+  };
+
   const generateSlots = (start: string, end: string, dur: number): DaySlot[] => {
     const slots: DaySlot[] = [];
     const startRounded = roundToHalfHour(start);
@@ -641,12 +668,40 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
                         <span className="day-date">{d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                       </label>
                     </div>
-                    {busy.length > 0 && (
-                      <span className="busy-badge">{busy.length} busy</span>
-                    )}
-                    {settings.enabled && daySlots.length > 0 && (
-                      <span className="slots-badge">{daySlots.length} slots</span>
-                    )}
+                    <div className="day-actions">
+                      {weekDays.filter(d => d !== date && daySettings[d]?.timeSlots?.length > 0).length > 0 && (
+                        <select
+                          className="copy-from-select"
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              copyDaySettings(e.target.value, date);
+                              e.target.value = ''; // Reset dropdown
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <option value="">{t.createSlot.copyFrom}</option>
+                          {weekDays
+                            .filter(d => d !== date && daySettings[d]?.timeSlots?.length > 0)
+                            .map((sourceDate) => {
+                              const sourceDay = new Date(sourceDate);
+                              const sourceDayName = dayNames[weekDays.indexOf(sourceDate)];
+                              return (
+                                <option key={sourceDate} value={sourceDate}>
+                                  {sourceDayName} ({sourceDay.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })})
+                                </option>
+                              );
+                            })}
+                        </select>
+                      )}
+                      {busy.length > 0 && (
+                        <span className="busy-badge">{busy.length} busy</span>
+                      )}
+                      {settings.enabled && daySlots.length > 0 && (
+                        <span className="slots-badge">{daySlots.length} slots</span>
+                      )}
+                    </div>
                   </div>
 
                   {settings.enabled && (

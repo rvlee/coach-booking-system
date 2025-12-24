@@ -95,7 +95,13 @@ router.get('/auth/callback', async (req, res) => {
 
     // Store Google tokens for calendar access
     try {
+      // First store tokens (may not have calendar_id yet)
+      await storeTokens(coach.id, tokens, null);
+      
+      // Then ensure dedicated calendar exists (will check database and Google Calendar)
       const calendarId = await ensureDedicatedCalendar(loginClient, {}, coach.id);
+      
+      // Update tokens with calendar_id
       await storeTokens(coach.id, tokens, calendarId);
       console.log('Google Calendar connected successfully for coach:', coach.id);
       
@@ -161,7 +167,13 @@ router.get('/callback', async (req, res) => {
       return res.status(400).send('Missing coach_id to link tokens.');
     }
 
+    // First store tokens (may not have calendar_id yet)
+    await storeTokens(coach_id, tokens, null);
+    
+    // Then ensure dedicated calendar exists (will check database and Google Calendar)
     const calendarId = await ensureDedicatedCalendar(client, {}, coach_id);
+    
+    // Update tokens with calendar_id
     await storeTokens(coach_id, tokens, calendarId);
     
     console.log('Google Calendar connected for coach:', coach_id);

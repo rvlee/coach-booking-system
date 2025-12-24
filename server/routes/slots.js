@@ -297,6 +297,85 @@ router.put('/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Batch delete slots
+router.post('/delete-batch', authenticateToken, async (req, res) => {
+  try {
+    const { slotIds } = req.body;
+    
+    if (!Array.isArray(slotIds) || slotIds.length === 0) {
+      return res.status(400).json({ error: 'slotIds array is required and must not be empty' });
+    }
+
+    // Verify all slots belong to coach and get their details
+    const placeholders = slotIds.map(() => '?').join(',');
+    const slots = await all(
+      `SELECT * FROM slots WHERE id IN (${placeholders}) AND coach_id = ?`,
+      [...slotIds, req.user.id]
+    );
+
+    if (slots.length !== slotIds.length) {
+      return res.status(403).json({ error: 'Some slots not found or do not belong to you' });
+    }
+
+    // Check if any slots are booked
+    const bookedSlots = slots.filter(slot => slot.is_booked);
+    if (bookedSlots.length > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete booked slots. Please cancel bookings first.',
+        bookedSlotIds: bookedSlots.map(s => s.id)
+      });
+    }
+
+    // Delete from Google Calendar and database
+    const auth = await getAuthorizedClient(req.user.id);
+    let calendarId = null;
+    if (auth) {
+      const { client, tokenRow } = auth;
+      calendarId = tokenRow.calendar_id || (await ensureDedicatedCalendar(client, tokenRow, req.user.id));
+    }
+
+    const deletedIds = [];
+    const errors = [];
+
+    for (const slot of slots) {
+      try {
+        // Delete from Google Calendar if linked
+        if (slot.google_event_id && auth) {
+          try {
+            await deleteEvent(auth.client, calendarId, slot.google_event_id);
+          } catch (syncErr) {
+            console.error(`Google Calendar delete failed for slot ${slot.id}:`, syncErr);
+            // Continue with database deletion even if Google Calendar delete fails
+          }
+        }
+
+        // Delete from database
+        await run('DELETE FROM slots WHERE id = ?', [slot.id]);
+        deletedIds.push(slot.id);
+      } catch (err: any) {
+        console.error(`Error deleting slot ${slot.id}:`, err);
+        errors.push({ id: slot.id, error: err.message || 'Failed to delete slot' });
+      }
+    }
+
+    if (errors.length > 0 && deletedIds.length === 0) {
+      return res.status(500).json({ 
+        error: 'Failed to delete all slots',
+        errors 
+      });
+    }
+
+    res.json({ 
+      message: `Successfully deleted ${deletedIds.length} slot(s)`,
+      deletedIds,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    console.error('Error in batch delete:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Delete slot
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {

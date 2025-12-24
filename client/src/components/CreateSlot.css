@@ -233,6 +233,7 @@
 .day-row-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.75rem;
 }
@@ -242,6 +243,35 @@
   align-items: center;
   gap: 0.75rem;
   flex: 1;
+}
+
+.day-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.copy-from-select {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.85rem;
+  color: #667eea;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+}
+
+.copy-from-select:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.copy-from-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .day-checkbox {

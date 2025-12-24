@@ -35,6 +35,8 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
   const [coachBookingLink, setCoachBookingLink] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState<boolean>(true);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [selectedSlots, setSelectedSlots] = useState<Set<number>>(new Set());
+  const [deletingBatch, setDeletingBatch] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchBookingLink = async (): Promise<void> => {
@@ -109,10 +111,70 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
     try {
       await axios.delete(`/api/slots/${slotId}`);
       onSlotDeleted(slotId);
+      // Remove from selected if it was selected
+      const newSelected = new Set(selectedSlots);
+      newSelected.delete(slotId);
+      setSelectedSlots(newSelected);
     } catch (error) {
       alert('Failed to delete slot');
     } finally {
       setDeleting({ ...deleting, [slotId]: false });
+    }
+  };
+
+  const handleToggleSelect = (slotId: number): void => {
+    const newSelected = new Set(selectedSlots);
+    if (newSelected.has(slotId)) {
+      newSelected.delete(slotId);
+    } else {
+      newSelected.add(slotId);
+    }
+    setSelectedSlots(newSelected);
+  };
+
+  const handleSelectAll = (): void => {
+    // Only select available (not booked) slots
+    const availableSlots = slots.filter(slot => !slot.is_booked);
+    if (selectedSlots.size === availableSlots.length) {
+      // Deselect all
+      setSelectedSlots(new Set());
+    } else {
+      // Select all available
+      setSelectedSlots(new Set(availableSlots.map(slot => slot.id)));
+    }
+  };
+
+  const handleDeleteSelected = async (): Promise<void> => {
+    if (selectedSlots.size === 0) return;
+
+    const count = selectedSlots.size;
+    const confirmMessage = t.slotsList.confirmDeleteSelected.replace(/\{\{count\}\}/g, String(count));
+    if (!confirm(confirmMessage)) return;
+
+    setDeletingBatch(true);
+    try {
+      const slotIds = Array.from(selectedSlots);
+      const response = await axios.post('/api/slots/delete-batch', { slotIds });
+      
+      // Remove deleted slots from selection and trigger callbacks
+      const deletedIds = response.data.deletedIds || [];
+      deletedIds.forEach((id: number) => {
+        onSlotDeleted(id);
+      });
+      
+      // Clear selection
+      setSelectedSlots(new Set());
+      
+      if (response.data.errors && response.data.errors.length > 0) {
+        alert(`Deleted ${deletedIds.length} slot(s), but ${response.data.errors.length} failed.`);
+      } else {
+        alert(`Successfully deleted ${deletedIds.length} slot(s).`);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || 'Failed to delete selected slots';
+      alert(errorMsg);
+    } finally {
+      setDeletingBatch(false);
     }
   };
 
@@ -275,10 +337,41 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
     );
   }
 
+  // Get available slots for select all functionality
+  const availableSlots = slots.filter(slot => !slot.is_booked);
+  const allAvailableSelected = availableSlots.length > 0 && availableSlots.every(slot => selectedSlots.has(slot.id));
+
   return (
     <div className="slots-list">
       <h2>{t.slotsList.yourSlots}</h2>
       {renderBookingLink()}
+      {slots.length > 0 && (
+        <div className="batch-actions">
+          <label className="select-all-checkbox">
+            <input
+              type="checkbox"
+              checked={allAvailableSelected}
+              onChange={handleSelectAll}
+              disabled={availableSlots.length === 0}
+            />
+            <span>{t.slotsList.selectAll}</span>
+          </label>
+          {selectedSlots.size > 0 && (
+            <div className="batch-actions-right">
+              <span className="selected-count">
+                {t.slotsList.selectedCount.replace(/\{\{count\}\}/g, String(selectedSlots.size))}
+              </span>
+              <button
+                onClick={handleDeleteSelected}
+                className="delete-selected-btn"
+                disabled={deletingBatch}
+              >
+                {deletingBatch ? t.slotsList.saving : t.slotsList.deleteSelected}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       <div className="slots-grid">
         {slots.map((slot) => (
           <div key={slot.id} className="slot-card">
@@ -342,18 +435,28 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
             ) : (
               <>
                 <div className="slot-content-compact">
-                  <div className="slot-main-info">
-                    <div className="slot-time-compact">
-                      {formatDateTime(slot.start_time)} - {new Date(slot.end_time).toLocaleTimeString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
-                    </div>
-                    <div className="slot-meta-compact">
-                      <span className="slot-duration-compact">{slot.duration_minutes} min</span>
-                      <span className={`slot-status-compact ${slot.is_booked ? 'booked' : 'available'}`}>
-                        {slot.is_booked ? t.slotsList.booked : t.slotsList.available}
-                      </span>
-                    </div>
+                  <div className="slot-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedSlots.has(slot.id)}
+                      onChange={() => handleToggleSelect(slot.id)}
+                      disabled={!!slot.is_booked}
+                      onClick={(e) => e.stopPropagation()}
+                    />
                   </div>
-                  <div className="slot-actions-compact">
+                  <div className="slot-content-wrapper">
+                    <div className="slot-main-info">
+                      <div className="slot-time-compact">
+                        {formatDateTime(slot.start_time)} - {new Date(slot.end_time).toLocaleTimeString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </div>
+                      <div className="slot-meta-compact">
+                        <span className="slot-duration-compact">{slot.duration_minutes} min</span>
+                        <span className={`slot-status-compact ${slot.is_booked ? 'booked' : 'available'}`}>
+                          {slot.is_booked ? t.slotsList.booked : t.slotsList.available}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="slot-actions-compact">
                     <button
                       onClick={() => handleEdit(slot)}
                       className="edit-btn-compact"
@@ -370,6 +473,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
                     >
                       {deleting[slot.id] ? '...' : '🗑️'}
                     </button>
+                    </div>
                   </div>
                 </div>
               </>

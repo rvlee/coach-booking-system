@@ -150,3 +150,6 @@ GOOGLE_REDIRECT_URI=https://yourdomain.com/api/google/callback
 8. Test all settings features
 
 
+
+
+

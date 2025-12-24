@@ -264,3 +264,6 @@ To make Google OAuth available to anyone:
 
 After publishing, anyone with a Google account can connect their calendar to your booking system!
 
+
+
+

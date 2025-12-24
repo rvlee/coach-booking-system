@@ -62,9 +62,9 @@ export function initDatabase() {
       password TEXT,
       name TEXT NOT NULL,
       coach_booking_link TEXT UNIQUE,
-      timezone TEXT DEFAULT 'America/Los_Angeles',
+      timezone TEXT DEFAULT 'Asia/Taipei',
       daily_booking_limit INTEGER DEFAULT NULL,
-      language TEXT DEFAULT 'en',
+      language TEXT DEFAULT 'zh-TW',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
@@ -77,9 +77,9 @@ export function initDatabase() {
     // Check if column exists first by trying to add it and ignoring errors
     db.run(`ALTER TABLE coaches ADD COLUMN password TEXT`, () => {});
     db.run(`ALTER TABLE coaches ADD COLUMN coach_booking_link TEXT UNIQUE`, () => {});
-    db.run(`ALTER TABLE coaches ADD COLUMN timezone TEXT DEFAULT 'America/Los_Angeles'`, () => {});
+    db.run(`ALTER TABLE coaches ADD COLUMN timezone TEXT DEFAULT 'Asia/Taipei'`, () => {});
     db.run(`ALTER TABLE coaches ADD COLUMN daily_booking_limit INTEGER DEFAULT NULL`, () => {});
-    db.run(`ALTER TABLE coaches ADD COLUMN language TEXT DEFAULT 'en'`, () => {});
+    db.run(`ALTER TABLE coaches ADD COLUMN language TEXT DEFAULT 'zh-TW'`, () => {});
   });
 
   // Slots table

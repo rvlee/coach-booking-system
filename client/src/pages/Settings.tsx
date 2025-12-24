@@ -7,9 +7,9 @@ import './Settings.css';
 function Settings() {
   const { t, setLanguage } = useLanguage();
   const [settings, setSettings] = useState<CoachSettings>({
-    timezone: 'America/Los_Angeles',
+    timezone: 'Asia/Taipei',
     daily_booking_limit: null,
-    language: 'en'
+    language: 'zh-TW'
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);

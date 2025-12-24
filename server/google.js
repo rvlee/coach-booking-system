@@ -116,10 +116,68 @@ export async function getAuthorizedClient(coachId) {
 }
 
 export async function ensureDedicatedCalendar(client, tokenRow, coachId = null) {
-  // If calendar_id already exists, return it
-  if (tokenRow?.calendar_id) return tokenRow.calendar_id;
+  // First, check if calendar_id exists in tokenRow
+  if (tokenRow?.calendar_id) {
+    console.log(`Using existing calendar_id from tokenRow: ${tokenRow.calendar_id}`);
+    return tokenRow.calendar_id;
+  }
   
-  // Create new calendar
+  // If coachId is provided, check database for existing calendar_id
+  if (coachId) {
+    try {
+      const existingTokens = await get('SELECT calendar_id FROM google_tokens WHERE coach_id = ?', [coachId]);
+      if (existingTokens?.calendar_id) {
+        console.log(`Found existing calendar_id in database: ${existingTokens.calendar_id}`);
+        // Verify the calendar still exists in Google Calendar
+        try {
+          const calendar = google.calendar({ version: 'v3', auth: client });
+          await calendar.calendars.get({ calendarId: existingTokens.calendar_id });
+          console.log(`Verified calendar ${existingTokens.calendar_id} exists in Google Calendar`);
+          return existingTokens.calendar_id;
+        } catch (err) {
+          console.warn(`Calendar ${existingTokens.calendar_id} not found in Google Calendar, will create new one`);
+          // Calendar was deleted, continue to create a new one
+        }
+      }
+    } catch (err) {
+      console.error('Error checking database for existing calendar_id:', err);
+    }
+  }
+  
+  // Check if a "Coaching Slots" calendar already exists in Google Calendar
+  try {
+    const calendar = google.calendar({ version: 'v3', auth: client });
+    const calendarList = await calendar.calendarList.list();
+    
+    // Look for existing "Coaching Slots" calendar
+    const existingCalendar = calendarList.data.items?.find(
+      cal => cal.summary === 'Coaching Slots' && cal.accessRole === 'owner'
+    );
+    
+    if (existingCalendar) {
+      const calendarId = existingCalendar.id;
+      console.log(`Found existing "Coaching Slots" calendar: ${calendarId}`);
+      
+      // Save to database if coachId is provided
+      if (coachId) {
+        try {
+          await run(
+            'UPDATE google_tokens SET calendar_id = ? WHERE coach_id = ?',
+            [calendarId, coachId]
+          );
+          console.log(`Saved existing calendar_id ${calendarId} to database for coach ${coachId}`);
+        } catch (err) {
+          console.error('Failed to save existing calendar_id to database:', err);
+        }
+      }
+      
+      return calendarId;
+    }
+  } catch (err) {
+    console.warn('Error checking for existing calendar, will create new one:', err.message);
+  }
+  
+  // Create new calendar if none exists
   const calendar = google.calendar({ version: 'v3', auth: client });
   const created = await calendar.calendars.insert({
     requestBody: {
@@ -129,6 +187,7 @@ export async function ensureDedicatedCalendar(client, tokenRow, coachId = null) 
   });
   
   const calendarId = created.data.id;
+  console.log(`Created new calendar: ${calendarId}`);
   
   // Save calendar_id to database if coachId is provided
   if (coachId) {
@@ -137,7 +196,7 @@ export async function ensureDedicatedCalendar(client, tokenRow, coachId = null) 
         'UPDATE google_tokens SET calendar_id = ? WHERE coach_id = ?',
         [calendarId, coachId]
       );
-      console.log(`Saved calendar_id ${calendarId} for coach ${coachId}`);
+      console.log(`Saved new calendar_id ${calendarId} to database for coach ${coachId}`);
     } catch (err) {
       console.error('Failed to save calendar_id to database:', err);
       // Continue anyway - the calendar was created successfully

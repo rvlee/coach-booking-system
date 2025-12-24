@@ -66,6 +66,7 @@ export interface Translations {
     creating: string;
     slotsReady: string;
     enableDays: string;
+    copyFrom: string;
   };
   bookingPage: {
     title: string;
@@ -139,6 +140,10 @@ export interface Translations {
     booked: string;
     copy: string;
     noBookingLink: string;
+    deleteSelected: string;
+    selectAll: string;
+    selectedCount: string;
+    confirmDeleteSelected: string;
   };
   calendar: {
     selectDate: string;
@@ -194,6 +199,10 @@ export const translations: Record<Language, Translations> = {
       booked: 'Booked',
       edit: 'Edit slot',
       delete: 'Delete slot',
+      deleteSelected: 'Delete Selected',
+      selectAll: 'Select All',
+      selectedCount: '{{count}} selected',
+      confirmDeleteSelected: 'Are you sure you want to delete {{count}} slot(s)?',
       save: 'Save',
       cancel: 'Cancel',
       saving: 'Saving...'
@@ -218,7 +227,8 @@ export const translations: Record<Language, Translations> = {
       createAll: 'Create All Slots',
       creating: 'Creating...',
       slotsReady: 'slot(s) ready',
-      enableDays: 'Enable days and configure times above'
+      enableDays: 'Enable days and configure times above',
+      copyFrom: 'Copy from...'
     },
     bookingPage: {
       title: 'Book Your Session',
@@ -345,6 +355,10 @@ export const translations: Record<Language, Translations> = {
       booked: '已預約',
       edit: '編輯時段',
       delete: '刪除時段',
+      deleteSelected: '刪除所選',
+      selectAll: '全選',
+      selectedCount: '已選 {{count}} 個',
+      confirmDeleteSelected: '確定要刪除 {{count}} 個時段嗎？',
       save: '儲存',
       cancel: '取消',
       saving: '儲存中...'
@@ -369,7 +383,8 @@ export const translations: Record<Language, Translations> = {
       createAll: '建立所有時段',
       creating: '建立中...',
       slotsReady: '個時段已準備就緒',
-      enableDays: '請在上方啟用日期並設定時間'
+      enableDays: '請在上方啟用日期並設定時間',
+      copyFrom: '複製自...'
     },
     bookingPage: {
       title: '預約您的課程',

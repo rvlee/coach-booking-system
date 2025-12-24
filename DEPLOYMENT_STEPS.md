@@ -41,23 +41,44 @@ This guide will walk you through deploying your Coach Booking System to producti
 
 1. In Railway, go to your service
 2. Click on **"Variables"** tab
-3. Click **"New Variable"** and add each of these:
+3. Click **"New Variable"** and add each of these (see `RAILWAY_ENV_VARIABLES.md` for exact values):
 
-```
-NODE_ENV=production
-PORT=3001
-FRONTEND_URL=https://your-frontend.vercel.app
-JWT_SECRET=your-very-strong-random-secret-32-chars-minimum
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_REDIRECT_URI=https://your-backend.railway.app/api/google/callback
-```
+**For each variable, click "New Variable" and enter:**
 
-**Important Notes:**
-- Replace `your-frontend.vercel.app` with your actual Vercel URL (we'll get this in Part 2)
-- Replace `your-backend.railway.app` with your Railway URL (shown in Railway dashboard)
-- Generate JWT_SECRET: Run `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` in terminal
-- Get Google credentials from Google Cloud Console (see Part 3)
+1. **NODE_ENV**
+   - Key: `NODE_ENV`
+   - Value: `production`
+
+2. **PORT**
+   - Key: `PORT`
+   - Value: `3001`
+
+3. **FRONTEND_URL** (use placeholder for now, update after Vercel deployment)
+   - Key: `FRONTEND_URL`
+   - Value: `https://placeholder.vercel.app`
+   - ⚠️ Update this after deploying frontend to Vercel
+
+4. **JWT_SECRET** (generate a random string)
+   - Key: `JWT_SECRET`
+   - Value: Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   - Example output: `a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6`
+
+5. **GOOGLE_CLIENT_ID** (from Google Cloud Console)
+   - Key: `GOOGLE_CLIENT_ID`
+   - Value: `your-client-id.apps.googleusercontent.com`
+   - Get from: Google Cloud Console → APIs & Services → Credentials
+
+6. **GOOGLE_CLIENT_SECRET** (from Google Cloud Console)
+   - Key: `GOOGLE_CLIENT_SECRET`
+   - Value: `your-client-secret`
+   - Get from: Google Cloud Console → APIs & Services → Credentials
+
+7. **GOOGLE_REDIRECT_URI** (update with your Railway URL after deployment)
+   - Key: `GOOGLE_REDIRECT_URI`
+   - Value: `https://your-backend.railway.app/api/google/callback`
+   - ⚠️ Replace `your-backend.railway.app` with your actual Railway URL (get from Step 5)
+
+**📖 See `RAILWAY_ENV_VARIABLES.md` for detailed instructions on getting each value.**
 
 ### Step 5: Get Your Backend URL
 
@@ -173,7 +194,10 @@ GOOGLE_REDIRECT_URI=https://your-backend.railway.app/api/google/callback
 5. Click **"Create"**
 6. **IMPORTANT**: Copy the **Client ID** and **Client Secret** immediately
    - You won't be able to see the secret again!
-
+   - Store them securely (e.g., in Railway environment variables)
+   - Example format:
+     - Client ID: `your-client-id.apps.googleusercontent.com`
+     - Client Secret: `GOCSPX-your-client-secret`
 ### Step 4: Update Railway Environment Variables
 
 1. Go back to **Railway**

@@ -23,7 +23,7 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [language, setLanguageState] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('zh-TW');
 
   useEffect(() => {
     // Fetch language preference from server
@@ -65,6 +65,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
+
 
 
 

@@ -242,3 +242,6 @@ If you encounter issues:
 3. Test `npm run build` locally first
 4. Check Vercel documentation: https://vercel.com/docs
 
+
+
+
