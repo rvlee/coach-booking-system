@@ -19,6 +19,7 @@ export interface Translations {
       label: string;
       description: string;
       hint: string;
+      noLimit: string;
     };
     language: {
       label: string;
@@ -181,7 +182,8 @@ export const translations: Record<Language, Translations> = {
       dailyLimit: {
         label: 'Maximum bookings per day',
         description: 'Set the maximum number of bookings allowed per day. Once reached, no more bookings will be accepted for that day. Leave empty for no limit.',
-        hint: 'Leave empty to allow unlimited bookings per day'
+        hint: 'Leave empty to allow unlimited bookings per day',
+        noLimit: 'No limit'
       },
       language: {
         label: 'Language',
@@ -238,7 +240,11 @@ export const translations: Record<Language, Translations> = {
       copyToSource: 'Copying from',
       copyToInstruction: 'Select dates from the calendar to copy these time slots to:',
       copyToConfirm: 'Copy to Selected Days',
-      cancel: 'Cancel'
+      cancel: 'Cancel',
+      enableDaysError: 'Please enable and configure at least one day with slots.',
+      allOverlapError: 'All selected time slots overlap with existing slots. No new slots will be created.',
+      slotsSkippedInfo: '{{skipped}} slot(s) were skipped because they overlap with existing slots. {{created}} slot(s) will be created.',
+      googleCalendarWarning: 'Warning: The following times overlap with Google Calendar events:\n{{warnings}}\n\nThese slots will still be created.'
     },
     bookingPage: {
       title: 'Book Your Session',
@@ -274,7 +280,9 @@ export const translations: Record<Language, Translations> = {
       checkBackLater: 'Please check back later.',
       contactCoach: 'Please contact the coach for alternative times.',
       sessionDetails: 'Session Details',
-      dateTime: 'Date & Time'
+      dateTime: 'Date & Time',
+      selectTimeSlot: 'Please select a time slot',
+      dailyLimitReached: 'Daily booking limit reached. Maximum {{limit}} bookings per day.'
     },
     login: {
       title: 'Coach Booking System',
@@ -346,7 +354,8 @@ export const translations: Record<Language, Translations> = {
       dailyLimit: {
         label: '每日最大預約數',
         description: '設定每日允許的最大預約數量。達到上限後，當天將不再接受預約。留空表示無限制。',
-        hint: '留空以允許每日無限制預約'
+        hint: '留空以允許每日無限制預約',
+        noLimit: '無限制'
       },
       language: {
         label: '語言',
@@ -403,7 +412,11 @@ export const translations: Record<Language, Translations> = {
       copyToSource: '複製來源',
       copyToInstruction: '從日曆中選擇要將這些時段複製到的日期：',
       copyToConfirm: '複製到所選日期',
-      cancel: '取消'
+      cancel: '取消',
+      enableDaysError: '請至少啟用並設定一個日期的時段。',
+      allOverlapError: '所有選定的時段都與現有時段重疊。不會建立新時段。',
+      slotsSkippedInfo: '已跳過 {{skipped}} 個時段，因為它們與現有時段重疊。將建立 {{created}} 個時段。',
+      googleCalendarWarning: '警告：以下時間與 Google 日曆活動重疊：\n{{warnings}}\n\n這些時段仍將被建立。'
     },
     bookingPage: {
       title: '預約您的課程',
@@ -439,7 +452,9 @@ export const translations: Record<Language, Translations> = {
       checkBackLater: '請稍後再查看。',
       contactCoach: '請聯繫教練以獲取其他時間。',
       sessionDetails: '課程詳情',
-      dateTime: '日期與時間'
+      dateTime: '日期與時間',
+      selectTimeSlot: '請選擇一個時段',
+      dailyLimitReached: '已達到每日預約上限。每天最多 {{limit}} 個預約。'
     },
     login: {
       title: '教練預約系統',

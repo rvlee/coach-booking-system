@@ -125,7 +125,9 @@ router.get('/settings', authenticateToken, async (req, res) => {
     }
     res.json({
       timezone: coach.timezone || 'Asia/Taipei',
-      daily_booking_limit: coach.daily_booking_limit,
+      daily_booking_limit: coach.daily_booking_limit !== null && coach.daily_booking_limit !== undefined 
+        ? Number(coach.daily_booking_limit) 
+        : null,
       language: coach.language || 'zh-TW'
     });
   } catch (error) {
@@ -168,7 +170,13 @@ router.put('/settings', authenticateToken, async (req, res) => {
     
     if (daily_booking_limit !== undefined) {
       updates.push('daily_booking_limit = ?');
-      params.push(daily_booking_limit !== null && daily_booking_limit !== '' ? daily_booking_limit : null);
+      // Convert to integer if it's a valid number, otherwise set to null
+      let limitValue = null;
+      if (daily_booking_limit !== null && daily_booking_limit !== '') {
+        const parsed = typeof daily_booking_limit === 'string' ? parseInt(daily_booking_limit, 10) : daily_booking_limit;
+            limitValue = isNaN(parsed) ? null : parsed;
+      }
+      params.push(limitValue);
     }
     
     if (language !== undefined) {
@@ -191,7 +199,9 @@ router.put('/settings', authenticateToken, async (req, res) => {
     
     res.json({
       timezone: updated.timezone || 'Asia/Taipei',
-      daily_booking_limit: updated.daily_booking_limit,
+      daily_booking_limit: updated.daily_booking_limit !== null && updated.daily_booking_limit !== undefined 
+        ? Number(updated.daily_booking_limit) 
+        : null,
       language: updated.language || 'zh-TW'
     });
   } catch (error) {

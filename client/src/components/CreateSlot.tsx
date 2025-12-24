@@ -97,12 +97,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
         };
       }
     });
-    // Remove dates that are no longer in the current week
-    Object.keys(settings).forEach((date) => {
-      if (!weekDays.includes(date)) {
-        delete settings[date];
-      }
-    });
+    // Don't remove dates outside current week - they might be copied to dates
+    // The dates will be cleaned up after slots are created
     setDaySettings(settings);
   }, [weekStart]);
 
@@ -338,7 +334,10 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
 
   const getAllSlots = (): DaySlot[] => {
     const allSlots: DaySlot[] = [];
-    weekDays.forEach((date) => {
+    // Include all dates in daySettings, not just current week
+    // This allows copying to dates outside the current week
+    const allDates = Object.keys(daySettings);
+    allDates.forEach((date) => {
       const daySlots = getSlotsForDay(date);
       daySlots.forEach((slot) => {
         allSlots.push({
@@ -593,7 +592,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
       const allSlots = getAllSlots();
 
       if (allSlots.length === 0) {
-        setError('Please enable and configure at least one day with slots.');
+        setError(t.createSlot.enableDaysError);
         setLoading(false);
         return;
       }
@@ -642,13 +641,14 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
 
       // Show warnings for Google Calendar overlaps but continue
       if (googleCalendarWarnings.length > 0) {
-        const warningMessage = `Warning: The following times overlap with Google Calendar events:\n${googleCalendarWarnings.join('\n')}\n\nThese slots will still be created.`;
+        const warningTemplate = t.createSlot.googleCalendarWarning || 'Warning: The following times overlap with Google Calendar events:\n{{warnings}}\n\nThese slots will still be created.';
+        const warningMessage = warningTemplate.replace(/\{\{warnings\}\}/g, googleCalendarWarnings.join('\n'));
         alert(warningMessage);
       }
 
       // Check if we have any slots to create after filtering
       if (filteredSlots.length === 0) {
-        setError('All selected time slots overlap with existing slots. No new slots will be created.');
+        setError(t.createSlot.allOverlapError);
         setLoading(false);
         return;
       }
@@ -656,7 +656,10 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
       // If some slots were filtered out, show info message
       if (filteredSlots.length < allSlots.length) {
         const skippedCount = allSlots.length - filteredSlots.length;
-        const infoMessage = `${skippedCount} slot(s) were skipped because they overlap with existing slots. ${filteredSlots.length} slot(s) will be created.`;
+        const infoTemplate = t.createSlot.slotsSkippedInfo || '{{skipped}} slot(s) were skipped because they overlap with existing slots. {{created}} slot(s) will be created.';
+        const infoMessage = infoTemplate
+          .replace(/\{\{skipped\}\}/g, String(skippedCount))
+          .replace(/\{\{created\}\}/g, String(filteredSlots.length));
         setInfo(infoMessage);
         // Clear info after 5 seconds
         setTimeout(() => setInfo(''), 5000);
@@ -692,18 +695,40 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
         } else {
           updateBusyBlocksWithSlots({}, updatedSlots);
         }
+        
+        // Reset form - only reset dates in current week, preserve dates outside current week
+        // (they will be cleaned up naturally or can be manually cleared)
+        const resetSettings: Record<string, DaySetting> = { ...daySettings };
+        weekDays.forEach((date) => {
+          resetSettings[date] = {
+            enabled: false,
+            timeSlots: []
+          };
+        });
+        // Clean up dates outside current week that were just used for copying
+        // Only remove if they were enabled (meaning they were just copied to)
+        Object.keys(resetSettings).forEach((date) => {
+          if (!weekDays.includes(date) && resetSettings[date].enabled) {
+            // Check if slots were actually created for this date
+            const wasCreated = response.data.slots.some((slot: Slot) => {
+              if (!slot.start_time) return false;
+              const slotDate = new Date(slot.start_time);
+              const year = slotDate.getFullYear();
+              const month = String(slotDate.getMonth() + 1).padStart(2, '0');
+              const day = String(slotDate.getDate()).padStart(2, '0');
+              const slotDateStr = `${year}-${month}-${day}`;
+              return slotDateStr === date;
+            });
+            // Only remove if slots were created (to clean up after copy)
+            if (wasCreated) {
+              delete resetSettings[date];
+            }
+          }
+        });
+        setDaySettings(resetSettings);
+        setError('');
+        setInfo('');
       }
-
-      // Reset all day settings
-      const resetSettings: Record<string, DaySetting> = {};
-      weekDays.forEach((date) => {
-        resetSettings[date] = {
-          enabled: false,
-          timeSlots: []
-        };
-      });
-      setDaySettings(resetSettings);
-      setError('');
     } catch (err: any) {
       console.error('Batch create error:', err);
       const errorMsg = err.response?.data?.error || err.message || 'Failed to create slot';

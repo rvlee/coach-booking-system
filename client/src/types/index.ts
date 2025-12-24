@@ -117,7 +117,7 @@ export interface CreateSlotProps {
 
 export interface SlotsListProps {
   slots: Slot[];
-  onSlotDeleted: (slotId: number) => void;
+  onSlotDeleted: (slotId: number) => Promise<void>;
   onSlotUpdated: (slot: Slot) => void;
 }
 

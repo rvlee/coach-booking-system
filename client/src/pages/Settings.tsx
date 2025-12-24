@@ -23,7 +23,14 @@ function Settings() {
   const fetchSettings = async (): Promise<void> => {
     try {
       const response = await axios.get<CoachSettings>('/api/coach/settings');
-      setSettings(response.data);
+      // Ensure daily_booking_limit is a number or null
+      const settingsData = {
+        ...response.data,
+        daily_booking_limit: response.data.daily_booking_limit !== null && response.data.daily_booking_limit !== undefined 
+          ? Number(response.data.daily_booking_limit) 
+          : null
+      };
+      setSettings(settingsData);
     } catch (err) {
       console.error('Error fetching settings:', err);
       setError('Failed to load settings');
@@ -130,7 +137,7 @@ function Settings() {
                 min="1"
                 value={settings.daily_booking_limit || ''}
                 onChange={(e) => handleChange('daily_booking_limit', e.target.value ? parseInt(e.target.value, 10) : null)}
-                placeholder="No limit"
+                placeholder={t.settings.dailyLimit.noLimit || "No limit"}
                 className="settings-input"
               />
               <small className="setting-hint">

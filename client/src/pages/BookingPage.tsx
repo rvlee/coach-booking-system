@@ -75,7 +75,7 @@ function BookingPage() {
     setError('');
     
     if (isCoachLink && !selectedSlotId) {
-      setError('Please select a time slot');
+      setError(t.bookingPage.selectTimeSlot);
       return;
     }
 
@@ -105,7 +105,20 @@ function BookingPage() {
         setSlot({ ...slot, is_booked: true });
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to book slot');
+      const errorMsg = err.response?.data?.error || 'Failed to book slot';
+      // Check if it's a daily limit error and translate it
+      if (errorMsg.includes('Daily booking limit reached')) {
+        const limitMatch = errorMsg.match(/Maximum (\d+) bookings per day/);
+        if (limitMatch) {
+          const limit = limitMatch[1];
+          const translatedMsg = t.bookingPage.dailyLimitReached.replace(/\{\{limit\}\}/g, limit);
+          setError(translatedMsg);
+        } else {
+          setError(errorMsg);
+        }
+      } else {
+        setError(errorMsg);
+      }
     } finally {
       setSubmitting(false);
     }

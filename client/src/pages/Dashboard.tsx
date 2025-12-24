@@ -81,9 +81,18 @@ function Dashboard() {
     setSlotsRefreshTrigger(prev => prev + 1);
   };
 
-  const handleSlotDeleted = (slotId: number): void => {
+  const handleSlotDeleted = async (slotId: number): Promise<void> => {
+    // Update local state immediately for responsive UI
     setSlots(slots.filter(s => s.id !== slotId));
     setSlotsRefreshTrigger(prev => prev + 1);
+    
+    // Refetch all slots to ensure UI is in sync with server
+    try {
+      const slotsRes = await axios.get<Slot[]>('/api/slots');
+      setSlots(slotsRes.data);
+    } catch (error) {
+      console.error('Error refreshing slots after deletion:', error);
+    }
   };
 
   const handleSlotUpdated = (updatedSlot: Slot): void => {

@@ -110,7 +110,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
     setDeleting({ ...deleting, [slotId]: true });
     try {
       await axios.delete(`/api/slots/${slotId}`);
-      onSlotDeleted(slotId);
+      await onSlotDeleted(slotId);
       // Remove from selected if it was selected
       const newSelected = new Set(selectedSlots);
       newSelected.delete(slotId);
@@ -159,9 +159,12 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
       
       // Remove deleted slots from selection and trigger callbacks
       const deletedIds = response.data.deletedIds || [];
-      deletedIds.forEach((id: number) => {
-        onSlotDeleted(id);
-      });
+      
+      // Call onSlotDeleted for each deleted slot
+      // The parent component will handle refreshing the slots list
+      for (const id of deletedIds) {
+        await onSlotDeleted(id);
+      }
       
       // Clear selection
       setSelectedSlots(new Set());
