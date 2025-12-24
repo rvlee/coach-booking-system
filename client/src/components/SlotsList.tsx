@@ -148,7 +148,8 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
     if (selectedSlots.size === 0) return;
 
     const count = selectedSlots.size;
-    const confirmMessage = t.slotsList.confirmDeleteSelected.replace(/\{\{count\}\}/g, String(count));
+    const confirmTemplate = t.slotsList?.confirmDeleteSelected || 'Are you sure you want to delete {{count}} slot(s)?';
+    const confirmMessage = confirmTemplate.replace(/\{\{count\}\}/g, String(count));
     if (!confirm(confirmMessage)) return;
 
     setDeletingBatch(true);
@@ -359,14 +360,14 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
           {selectedSlots.size > 0 && (
             <div className="batch-actions-right">
               <span className="selected-count">
-                {t.slotsList.selectedCount.replace(/\{\{count\}\}/g, String(selectedSlots.size))}
+                {(t.slotsList?.selectedCount || '{{count}} selected').replace(/\{\{count\}\}/g, String(selectedSlots.size))}
               </span>
               <button
                 onClick={handleDeleteSelected}
                 className="delete-selected-btn"
                 disabled={deletingBatch}
               >
-                {deletingBatch ? t.slotsList.saving : t.slotsList.deleteSelected}
+                {deletingBatch ? (t.slotsList?.saving || 'Saving...') : (t.slotsList?.deleteSelected || 'Delete Selected')}
               </button>
             </div>
           )}

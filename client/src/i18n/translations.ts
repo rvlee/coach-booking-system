@@ -309,7 +309,11 @@ export const translations: Record<Language, Translations> = {
       available: 'Available',
       booked: 'Booked',
       copy: 'Copy',
-      noBookingLink: 'No booking link available'
+      noBookingLink: 'No booking link available',
+      deleteSelected: 'Delete Selected',
+      selectAll: 'Select All',
+      selectedCount: '{{count}} selected',
+      confirmDeleteSelected: 'Are you sure you want to delete {{count}} slot(s)?'
     },
     calendar: {
       selectDate: 'Select a Date',
@@ -469,7 +473,11 @@ export const translations: Record<Language, Translations> = {
       available: '可預約',
       booked: '已預約',
       copy: '複製',
-      noBookingLink: '無可用預約連結'
+      noBookingLink: '無可用預約連結',
+      deleteSelected: '刪除所選',
+      selectAll: '全選',
+      selectedCount: '已選 {{count}} 個',
+      confirmDeleteSelected: '確定要刪除 {{count}} 個時段嗎？'
     },
     calendar: {
       selectDate: '選擇日期',
