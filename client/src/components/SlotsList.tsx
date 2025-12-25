@@ -49,9 +49,14 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent): void => {
       if (isResizingSlotsList) {
-        const newHeight = window.innerHeight - e.clientY;
-        if (newHeight >= 200 && newHeight <= 1000) {
-          setSlotsListHeight(newHeight);
+        const slotsList = document.querySelector('.slots-list');
+        if (slotsList) {
+          const rect = slotsList.getBoundingClientRect();
+          // Calculate height from top (resize handle is at top, dragging down increases height)
+          const newHeight = e.clientY - rect.top;
+          if (newHeight >= 200 && newHeight <= 1000) {
+            setSlotsListHeight(newHeight);
+          }
         }
       }
     };
@@ -427,8 +432,16 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
 
   return (
     <div className="slots-list">
-      <h2>{t.slotsList.yourSlots}</h2>
-      {renderBookingLink()}
+      <div 
+        className="resize-handle"
+        onMouseDown={handleSlotsListMouseDown}
+        style={{ cursor: 'ns-resize' }}
+      >
+        <div className="resize-handle-line"></div>
+      </div>
+      <div style={{ marginTop: '8px' }}>
+        <h2>{t.slotsList.yourSlots}</h2>
+        {renderBookingLink()}
       {slots.length > 0 && (
         <div className="batch-actions">
           <label className="select-all-checkbox">
@@ -584,12 +597,6 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
           );
         })}
       </div>
-      <div 
-        className="resize-handle"
-        onMouseDown={handleSlotsListMouseDown}
-        style={{ cursor: 'ns-resize' }}
-      >
-        <div className="resize-handle-line"></div>
       </div>
     </div>
   );
