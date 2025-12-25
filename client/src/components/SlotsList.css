@@ -4,6 +4,7 @@
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   min-height: 200px;
+  max-height: 500px;
   position: relative;
   overflow-y: auto;
   flex: 1;
@@ -14,6 +15,7 @@
 @media (max-width: 768px) {
   .slots-list {
     min-height: 500px;
+    max-height: none;
   }
 }
 
