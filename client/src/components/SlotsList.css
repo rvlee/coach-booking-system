@@ -4,6 +4,45 @@
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   min-height: 400px;
+  position: relative;
+  overflow-y: auto;
+}
+
+.slots-list.resizable-section {
+  resize: none;
+}
+
+/* Resize Handle Styles */
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  background: transparent;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.resize-handle:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.resize-handle-line {
+  width: 60px;
+  height: 4px;
+  background: #667eea;
+  border-radius: 2px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.resize-handle:hover .resize-handle-line {
+  opacity: 1;
 }
 
 .slots-list h2 {

@@ -37,6 +37,38 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<Set<number>>(new Set());
   const [deletingBatch, setDeletingBatch] = useState<boolean>(false);
+  const [slotsListHeight, setSlotsListHeight] = useState<number>(500);
+  const [isResizingSlotsList, setIsResizingSlotsList] = useState<boolean>(false);
+
+  // Resize handlers for slots list section
+  const handleSlotsListMouseDown = (e: React.MouseEvent): void => {
+    e.preventDefault();
+    setIsResizingSlotsList(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent): void => {
+      if (isResizingSlotsList) {
+        const newHeight = window.innerHeight - e.clientY;
+        if (newHeight >= 200 && newHeight <= 1000) {
+          setSlotsListHeight(newHeight);
+        }
+      }
+    };
+
+    const handleMouseUp = (): void => {
+      setIsResizingSlotsList(false);
+    };
+
+    if (isResizingSlotsList) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizingSlotsList]);
 
   useEffect(() => {
     const fetchBookingLink = async (): Promise<void> => {
@@ -331,11 +363,18 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
 
   if (slots.length === 0) {
     return (
-      <div className="slots-list">
+      <div className="slots-list resizable-section" style={{ height: `${slotsListHeight}px` }}>
         <h2>{t.slotsList.yourSlots}</h2>
         {renderBookingLink()}
         <div className="slots-empty">
           <p>{t.slotsList.noSlots}</p>
+        </div>
+        <div 
+          className="resize-handle"
+          onMouseDown={handleSlotsListMouseDown}
+          style={{ cursor: 'ns-resize' }}
+        >
+          <div className="resize-handle-line"></div>
         </div>
       </div>
     );
@@ -484,6 +523,13 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
             )}
           </div>
         ))}
+      </div>
+      <div 
+        className="resize-handle"
+        onMouseDown={handleSlotsListMouseDown}
+        style={{ cursor: 'ns-resize' }}
+      >
+        <div className="resize-handle-line"></div>
       </div>
     </div>
   );

@@ -82,6 +82,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const [copyToSourceDate, setCopyToSourceDate] = useState<string | null>(null);
   const [copyToTargetDates, setCopyToTargetDates] = useState<Set<string>>(new Set());
   const [copyToCalendarMonth, setCopyToCalendarMonth] = useState<Date>(new Date());
+  const [timeSettingHeight, setTimeSettingHeight] = useState<number>(400);
+  const [isResizingTimeSetting, setIsResizingTimeSetting] = useState<boolean>(false);
 
   const weekDays = getWeekDays(weekStart);
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -275,6 +277,40 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
       return newDate;
     });
   };
+
+  // Resize handlers for time setting section
+  const handleTimeSettingMouseDown = (e: React.MouseEvent): void => {
+    e.preventDefault();
+    setIsResizingTimeSetting(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent): void => {
+      if (isResizingTimeSetting) {
+        const daysList = document.querySelector('.days-list.resizable-section');
+        if (daysList) {
+          const rect = daysList.getBoundingClientRect();
+          const newHeight = e.clientY - rect.top;
+          if (newHeight >= 200 && newHeight <= 800) {
+            setTimeSettingHeight(newHeight);
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = (): void => {
+      setIsResizingTimeSetting(false);
+    };
+
+    if (isResizingTimeSetting) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizingTimeSetting]);
 
   const handleCopyToConfirm = (): void => {
     if (copyToSourceDate && copyToTargetDates.size > 0) {
@@ -787,7 +823,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
             </div>
           )}
 
-          <div className="days-list">
+          <div className="days-list resizable-section" style={{ height: `${timeSettingHeight}px` }}>
             {weekDays.map((date, idx) => {
               const d = new Date(date);
               const dayName = dayNames[idx];
@@ -905,6 +941,13 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
                 </div>
               );
             })}
+            <div 
+              className="resize-handle"
+              onMouseDown={handleTimeSettingMouseDown}
+              style={{ cursor: 'ns-resize' }}
+            >
+              <div className="resize-handle-line"></div>
+            </div>
           </div>
 
           {/* Copy To Modal */}
