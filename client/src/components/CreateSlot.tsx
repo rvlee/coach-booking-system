@@ -291,6 +291,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
         const createSlot = document.querySelector('.create-slot');
         if (createSlot) {
           const rect = createSlot.getBoundingClientRect();
+          // Calculate height from top (resize handle is at top, dragging down increases height)
           const newHeight = e.clientY - rect.top;
           // Allow scaling down to 200px minimum, and up to 1200px maximum
           if (newHeight >= 200 && newHeight <= 1200) {
@@ -791,6 +792,13 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           {isMinimized ? '▼' : '▲'}
         </button>
       </div>
+      <div 
+        className="resize-handle"
+        onMouseDown={handleTimeSettingMouseDown}
+        style={{ cursor: 'ns-resize' }}
+      >
+        <div className="resize-handle-line"></div>
+      </div>
       <div className="slot-grid resizable-section">
         <div className="calendar-panel">
           <div className="week-nav">
@@ -1071,13 +1079,6 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           </div>
         </form>
         )}
-      </div>
-      <div 
-        className="resize-handle"
-        onMouseDown={handleTimeSettingMouseDown}
-        style={{ cursor: 'ns-resize' }}
-      >
-        <div className="resize-handle-line"></div>
       </div>
     </div>
   );

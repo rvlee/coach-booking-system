@@ -474,111 +474,115 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
               <div className="slots-day-grid">
                 {sortedDaySlots.map((slot) => (
                   <div key={slot.id} className="slot-card">
-            {editing[slot.id] ? (
-              <div className="slot-edit-form">
-                <div className="edit-form-row">
-                  <div className="edit-form-group">
-                    <label>{t.slotsList.startDate}</label>
-                    <input
-                      type="date"
-                      value={editData[slot.id]?.start_date || ''}
-                      onChange={(e) => handleEditChange(slot.id, 'start_date', e.target.value)}
-                    />
+                    {editing[slot.id] ? (
+                    <div className="slot-edit-form">
+                      <div className="edit-form-row">
+                        <div className="edit-form-group">
+                          <label>{t.slotsList.startDate}</label>
+                          <input
+                            type="date"
+                            value={editData[slot.id]?.start_date || ''}
+                            onChange={(e) => handleEditChange(slot.id, 'start_date', e.target.value)}
+                          />
+                        </div>
+                        <div className="edit-form-group">
+                          <label>{t.slotsList.startTime}</label>
+                          <input
+                            type="time"
+                            value={editData[slot.id]?.start_time || ''}
+                            onChange={(e) => handleEditChange(slot.id, 'start_time', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="edit-form-row">
+                        <div className="edit-form-group">
+                          <label>{t.slotsList.endTime}</label>
+                          <input
+                            type="time"
+                            value={editData[slot.id]?.end_time || ''}
+                            onChange={(e) => handleEditChange(slot.id, 'end_time', e.target.value)}
+                          />
+                        </div>
+                        <div className="edit-form-group duration-group">
+                          <label>{t.slotsList.duration}</label>
+                          <input
+                            type="number"
+                            min="15"
+                            step="15"
+                            value={editData[slot.id]?.duration_minutes || ''}
+                            onChange={(e) => handleEditChange(slot.id, 'duration_minutes', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="edit-actions">
+                        <button
+                          onClick={() => handleSaveEdit(slot.id)}
+                          className="save-btn"
+                          disabled={saving[slot.id]}
+                        >
+                          {saving[slot.id] ? t.slotsList.saving : t.slotsList.save}
+                        </button>
+                        <button
+                          onClick={() => handleCancelEdit(slot.id)}
+                          className="cancel-btn"
+                          disabled={saving[slot.id]}
+                        >
+                          {t.slotsList.cancel}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="slot-content-compact">
+                        <div className="slot-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={selectedSlots.has(slot.id)}
+                            onChange={() => handleToggleSelect(slot.id)}
+                            disabled={!!slot.is_booked}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                        <div className="slot-content-wrapper">
+                          <div className="slot-main-info">
+                            <div className="slot-time-compact">
+                              {formatDateTime(slot.start_time)} - {new Date(slot.end_time).toLocaleTimeString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
+                            </div>
+                            <div className="slot-meta-compact">
+                              <span className="slot-duration-compact">{slot.duration_minutes} min</span>
+                              <span className={`slot-status-compact ${slot.is_booked ? 'booked' : 'available'}`}>
+                                {slot.is_booked ? t.slotsList.booked : t.slotsList.available}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="slot-actions-compact">
+                            <button
+                              onClick={() => handleEdit(slot)}
+                              className="edit-btn-compact"
+                              disabled={!!slot.is_booked}
+                              title="Edit slot"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleDelete(slot.id)}
+                              className="delete-btn-compact"
+                              disabled={!!deleting[slot.id] || !!slot.is_booked}
+                              title="Delete slot"
+                            >
+                              {deleting[slot.id] ? '...' : '🗑️'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   </div>
-                  <div className="edit-form-group">
-                    <label>{t.slotsList.startTime}</label>
-                    <input
-                      type="time"
-                      value={editData[slot.id]?.start_time || ''}
-                      onChange={(e) => handleEditChange(slot.id, 'start_time', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="edit-form-row">
-                  <div className="edit-form-group">
-                    <label>{t.slotsList.endTime}</label>
-                    <input
-                      type="time"
-                      value={editData[slot.id]?.end_time || ''}
-                      onChange={(e) => handleEditChange(slot.id, 'end_time', e.target.value)}
-                    />
-                  </div>
-                  <div className="edit-form-group duration-group">
-                    <label>{t.slotsList.duration}</label>
-                    <input
-                      type="number"
-                      min="15"
-                      step="15"
-                      value={editData[slot.id]?.duration_minutes || ''}
-                      onChange={(e) => handleEditChange(slot.id, 'duration_minutes', e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="edit-actions">
-                  <button
-                    onClick={() => handleSaveEdit(slot.id)}
-                    className="save-btn"
-                    disabled={saving[slot.id]}
-                  >
-                    {saving[slot.id] ? t.slotsList.saving : t.slotsList.save}
-                  </button>
-                  <button
-                    onClick={() => handleCancelEdit(slot.id)}
-                    className="cancel-btn"
-                    disabled={saving[slot.id]}
-                  >
-                    {t.slotsList.cancel}
-                  </button>
-                </div>
+                ))}
               </div>
-            ) : (
-              <>
-                <div className="slot-content-compact">
-                  <div className="slot-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={selectedSlots.has(slot.id)}
-                      onChange={() => handleToggleSelect(slot.id)}
-                      disabled={!!slot.is_booked}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                  <div className="slot-content-wrapper">
-                    <div className="slot-main-info">
-                      <div className="slot-time-compact">
-                        {formatDateTime(slot.start_time)} - {new Date(slot.end_time).toLocaleTimeString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', { hour: 'numeric', minute: '2-digit' })}
-                      </div>
-                      <div className="slot-meta-compact">
-                        <span className="slot-duration-compact">{slot.duration_minutes} min</span>
-                        <span className={`slot-status-compact ${slot.is_booked ? 'booked' : 'available'}`}>
-                          {slot.is_booked ? t.slotsList.booked : t.slotsList.available}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="slot-actions-compact">
-                    <button
-                      onClick={() => handleEdit(slot)}
-                      className="edit-btn-compact"
-                      disabled={!!slot.is_booked}
-                      title="Edit slot"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => handleDelete(slot.id)}
-                      className="delete-btn-compact"
-                      disabled={!!deleting[slot.id] || !!slot.is_booked}
-                      title="Delete slot"
-                    >
-                      {deleting[slot.id] ? '...' : '🗑️'}
-                    </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
       <div 
         className="resize-handle"
