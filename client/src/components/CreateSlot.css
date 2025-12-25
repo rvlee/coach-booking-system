@@ -2,9 +2,10 @@
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
+  padding-bottom: calc(1.5rem + 8px); /* Add space for resize handle at bottom */
   margin-bottom: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to visible so resize handle is not clipped */
   display: flex;
   flex-direction: column;
   position: relative;
@@ -12,6 +13,16 @@
 
 .create-slot.minimized {
   height: auto !important;
+  overflow: visible !important;
+}
+
+.create-slot.minimized .slot-grid {
+  overflow: visible !important;
+  flex: none !important;
+}
+
+.create-slot.minimized .calendar-panel {
+  overflow: visible !important;
 }
 
 .create-slot-header {
@@ -1065,6 +1076,17 @@
   .calendar-panel {
     width: 100%;
     overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .create-slot.minimized .slot-grid {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .create-slot.minimized .calendar-panel {
+    overflow-x: auto;
+    overflow-y: visible;
   }
 
   .form-row {

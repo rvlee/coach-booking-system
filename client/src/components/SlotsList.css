@@ -2,8 +2,9 @@
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
+  padding-top: calc(1.5rem + 8px); /* Add space for resize handle at top */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  min-height: 400px;
+  min-height: 200px;
   position: relative;
   overflow-y: auto;
 }
