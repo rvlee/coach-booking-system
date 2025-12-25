@@ -291,7 +291,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
         if (createSlot) {
           const rect = createSlot.getBoundingClientRect();
           const newHeight = e.clientY - rect.top;
-          if (newHeight >= 400 && newHeight <= 1200) {
+          // Allow scaling down to 200px minimum, and up to 1200px maximum
+          if (newHeight >= 200 && newHeight <= 1200) {
             setTimeSettingHeight(newHeight);
           }
         }

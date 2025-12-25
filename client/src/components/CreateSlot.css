@@ -14,7 +14,7 @@
 
 .slot-grid {
   display: grid;
-  grid-template-columns: 0.9fr 1fr;
+  grid-template-columns: 0.95fr 1fr;
   gap: 1.5rem;
   width: 100%;
   max-width: 100%;
@@ -29,6 +29,7 @@
 
 .create-slot {
   position: relative;
+  overflow: visible;
 }
 
 .calendar-panel {
