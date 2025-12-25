@@ -363,13 +363,6 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
         <div className="slots-empty">
           <p>{t.slotsList.noSlots}</p>
         </div>
-        <div 
-          className="resize-handle"
-          onMouseDown={handleSlotsListMouseDown}
-          style={{ cursor: 'ns-resize' }}
-        >
-          <div className="resize-handle-line"></div>
-        </div>
       </div>
     );
   }

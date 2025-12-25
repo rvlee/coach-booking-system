@@ -17,11 +17,6 @@
   }
 }
 
-.slots-list.resizable-section {
-  resize: none;
-}
-
-
 .slots-list h2 {
   margin-bottom: 1rem;
   color: #333;
