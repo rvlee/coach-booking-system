@@ -84,6 +84,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const [copyToCalendarMonth, setCopyToCalendarMonth] = useState<Date>(new Date());
   const [timeSettingHeight, setTimeSettingHeight] = useState<number>(400);
   const [isResizingTimeSetting, setIsResizingTimeSetting] = useState<boolean>(false);
+  const [isMinimized, setIsMinimized] = useState<boolean>(false);
 
   const weekDays = getWeekDays(weekStart);
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
