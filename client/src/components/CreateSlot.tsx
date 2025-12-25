@@ -287,11 +287,11 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent): void => {
       if (isResizingTimeSetting) {
-        const daysList = document.querySelector('.days-list.resizable-section');
-        if (daysList) {
-          const rect = daysList.getBoundingClientRect();
+        const slotForm = document.querySelector('.slot-form.resizable-section');
+        if (slotForm) {
+          const rect = slotForm.getBoundingClientRect();
           const newHeight = e.clientY - rect.top;
-          if (newHeight >= 200 && newHeight <= 800) {
+          if (newHeight >= 400 && newHeight <= 1200) {
             setTimeSettingHeight(newHeight);
           }
         }
@@ -798,7 +798,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="slot-form">
+        <form onSubmit={handleSubmit} className="slot-form resizable-section" style={{ height: `${timeSettingHeight}px` }}>
           {!googleStatus.connected && (
             <div className="google-banner">
               <div>
@@ -823,7 +823,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
             </div>
           )}
 
-          <div className="days-list resizable-section" style={{ height: `${timeSettingHeight}px` }}>
+          <div className="days-list">
             {weekDays.map((date, idx) => {
               const d = new Date(date);
               const dayName = dayNames[idx];
@@ -941,13 +941,6 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
                 </div>
               );
             })}
-            <div 
-              className="resize-handle"
-              onMouseDown={handleTimeSettingMouseDown}
-              style={{ cursor: 'ns-resize' }}
-            >
-              <div className="resize-handle-line"></div>
-            </div>
           </div>
 
           {/* Copy To Modal */}
@@ -1062,6 +1055,13 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
             <button type="submit" className="create-btn" disabled={loading || totalSlots === 0}>
               {loading ? t.createSlot.creating : t.createSlot.createAll}
             </button>
+          </div>
+          <div 
+            className="resize-handle"
+            onMouseDown={handleTimeSettingMouseDown}
+            style={{ cursor: 'ns-resize' }}
+          >
+            <div className="resize-handle-line"></div>
           </div>
         </form>
       </div>
