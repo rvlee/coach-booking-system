@@ -779,7 +779,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const totalSlots = getAllSlots().length;
 
   return (
-    <div className={`create-slot ${isMinimized ? 'minimized' : ''}`} style={{ height: isMinimized ? 'auto' : `${timeSettingHeight}px` }}>
+    <div className="create-slot" style={{ height: `${timeSettingHeight}px` }}>
       <div className="create-slot-header">
         <h2>{t.createSlot.title}</h2>
         <button
@@ -791,7 +791,6 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           {isMinimized ? '▼' : '▲'}
         </button>
       </div>
-      {!isMinimized && (
       <div className="slot-grid resizable-section">
         <div className="calendar-panel">
           <div className="week-nav">
@@ -811,6 +810,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           />
         </div>
 
+        {!isMinimized && (
         <form onSubmit={handleSubmit} className="slot-form">
           {!googleStatus.connected && (
             <div className="google-banner">
@@ -1070,9 +1070,8 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
             </button>
           </div>
         </form>
+        )}
       </div>
-      )}
-      {!isMinimized && (
       <div 
         className="resize-handle"
         onMouseDown={handleTimeSettingMouseDown}
@@ -1080,7 +1079,6 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
       >
         <div className="resize-handle-line"></div>
       </div>
-      )}
     </div>
   );
 }

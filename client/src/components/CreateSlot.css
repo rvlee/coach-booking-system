@@ -5,6 +5,9 @@
   margin-bottom: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 .create-slot.minimized {
@@ -47,18 +50,15 @@
   gap: 1.5rem;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
   position: relative;
 }
 
 .slot-grid.resizable-section {
   resize: none;
   overflow-y: auto;
-}
-
-.create-slot {
-  position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
 }
 
 .calendar-panel {
@@ -1025,6 +1025,12 @@
   transition: background 0.2s;
 }
 
+@media (max-width: 768px) {
+  .resize-handle {
+    display: none; /* Hide resize handle on mobile */
+  }
+}
+
 .resize-handle:hover {
   background: rgba(102, 126, 234, 0.1);
 }
@@ -1045,6 +1051,10 @@
 @media (max-width: 768px) {
   .minimize-btn {
     display: block;
+  }
+
+  .resize-handle {
+    display: none; /* Hide resize handle on mobile */
   }
 
   .slot-grid {
