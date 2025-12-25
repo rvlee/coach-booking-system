@@ -357,7 +357,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
 
   if (slots.length === 0) {
     return (
-      <div className="slots-list resizable-section" style={{ height: `${slotsListHeight}px` }}>
+      <div className="slots-list">
         <h2>{t.slotsList.yourSlots}</h2>
         {renderBookingLink()}
         <div className="slots-empty">
