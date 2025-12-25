@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { SlotsListProps, Slot, SlotEditData, BookingLinkResponse } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -37,50 +37,6 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<Set<number>>(new Set());
   const [deletingBatch, setDeletingBatch] = useState<boolean>(false);
-  const [slotsListHeight, setSlotsListHeight] = useState<number>(500);
-  const [isResizingSlotsList, setIsResizingSlotsList] = useState<boolean>(false);
-  const resizeStateRef = React.useRef<{ startY: number; startHeight: number } | null>(null);
-
-  // Resize handlers for slots list section
-  const handleSlotsListMouseDown = (e: React.MouseEvent): void => {
-    e.preventDefault();
-    const slotsList = document.querySelector('.slots-list');
-    if (slotsList) {
-      const rect = slotsList.getBoundingClientRect();
-      resizeStateRef.current = {
-        startY: e.clientY,
-        startHeight: rect.height
-      };
-      setIsResizingSlotsList(true);
-    }
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent): void => {
-      if (isResizingSlotsList && resizeStateRef.current) {
-        // Calculate height change: dragging down (larger clientY) increases height
-        const deltaY = e.clientY - resizeStateRef.current.startY;
-        const newHeight = resizeStateRef.current.startHeight + deltaY;
-        if (newHeight >= 200 && newHeight <= 1000) {
-          setSlotsListHeight(newHeight);
-        }
-      }
-    };
-
-    const handleMouseUp = (): void => {
-      setIsResizingSlotsList(false);
-      resizeStateRef.current = null;
-    };
-
-    if (isResizingSlotsList) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isResizingSlotsList]);
 
   useEffect(() => {
     const fetchBookingLink = async (): Promise<void> => {
@@ -438,7 +394,7 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
   const allAvailableSelected = availableSlots.length > 0 && availableSlots.every(slot => selectedSlots.has(slot.id));
 
   return (
-    <div className="slots-list" style={{ height: `${slotsListHeight}px` }}>
+    <div className="slots-list">
       <h2>{t.slotsList.yourSlots}</h2>
       {renderBookingLink()}
       {slots.length > 0 && (
@@ -595,13 +551,6 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
             </div>
           );
         })}
-      </div>
-      <div 
-        className="resize-handle"
-        onMouseDown={handleSlotsListMouseDown}
-        style={{ cursor: 'ns-resize' }}
-      >
-        <div className="resize-handle-line"></div>
       </div>
     </div>
   );
