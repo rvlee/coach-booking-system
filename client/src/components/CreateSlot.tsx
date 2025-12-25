@@ -287,9 +287,9 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent): void => {
       if (isResizingTimeSetting) {
-        const slotGrid = document.querySelector('.slot-grid.resizable-section');
-        if (slotGrid) {
-          const rect = slotGrid.getBoundingClientRect();
+        const createSlot = document.querySelector('.create-slot');
+        if (createSlot) {
+          const rect = createSlot.getBoundingClientRect();
           const newHeight = e.clientY - rect.top;
           if (newHeight >= 400 && newHeight <= 1200) {
             setTimeSettingHeight(newHeight);
@@ -777,9 +777,9 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const totalSlots = getAllSlots().length;
 
   return (
-    <div className="create-slot">
+    <div className="create-slot" style={{ minHeight: `${timeSettingHeight}px` }}>
       <h2>{t.createSlot.title}</h2>
-      <div className="slot-grid resizable-section" style={{ height: `${timeSettingHeight}px` }}>
+      <div className="slot-grid resizable-section">
         <div className="calendar-panel">
           <div className="week-nav">
             <button type="button" onClick={() => setWeekStart(shiftWeek(weekStart, -1))}>
@@ -1057,13 +1057,13 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
             </button>
           </div>
         </form>
-        <div 
-          className="resize-handle"
-          onMouseDown={handleTimeSettingMouseDown}
-          style={{ cursor: 'ns-resize' }}
-        >
-          <div className="resize-handle-line"></div>
-        </div>
+      </div>
+      <div 
+        className="resize-handle"
+        onMouseDown={handleTimeSettingMouseDown}
+        style={{ cursor: 'ns-resize' }}
+      >
+        <div className="resize-handle-line"></div>
       </div>
     </div>
   );
