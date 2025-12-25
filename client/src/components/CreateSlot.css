@@ -11,6 +11,12 @@
   position: relative;
 }
 
+@media (max-width: 768px) {
+  .create-slot.minimized {
+    padding-bottom: 1.5rem; /* Remove extra padding for resize handle on mobile when minimized */
+  }
+}
+
 .create-slot.minimized {
   height: auto !important;
   overflow: visible !important;
@@ -1079,7 +1085,20 @@
     overflow-y: visible;
   }
 
+  .create-slot.minimized {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
   .create-slot.minimized .slot-grid {
+    overflow: visible !important;
+    max-height: none !important;
+    flex: none !important;
+    min-height: auto !important;
+  }
+
+  .create-slot.minimized .slot-grid.resizable-section {
     overflow: visible !important;
     max-height: none !important;
   }
@@ -1087,6 +1106,7 @@
   .create-slot.minimized .calendar-panel {
     overflow-x: auto;
     overflow-y: visible;
+    max-height: none !important;
   }
 
   .form-row {

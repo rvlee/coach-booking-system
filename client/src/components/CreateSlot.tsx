@@ -780,7 +780,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const totalSlots = getAllSlots().length;
 
   return (
-    <div className="create-slot" style={{ height: `${timeSettingHeight}px` }}>
+    <div className={`create-slot ${isMinimized ? 'minimized' : ''}`} style={!isMinimized ? { height: `${timeSettingHeight}px` } : {}}>
       <div className="create-slot-header">
         <h2>{t.createSlot.title}</h2>
         <button
