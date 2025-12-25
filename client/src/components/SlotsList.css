@@ -199,7 +199,42 @@
   background: #5568d3;
 }
 
-.slots-grid {
+.slots-by-date {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.slots-day-group {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.slots-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.slots-day-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.slots-day-count {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.slots-day-grid {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

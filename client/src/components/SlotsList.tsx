@@ -278,13 +278,39 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
 
   const formatDateTime = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+    return date.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit'
     });
+  };
+
+  const formatDateHeader = (dateString: string): string => {
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const slotDate = new Date(date);
+    slotDate.setHours(0, 0, 0, 0);
+    
+    const isToday = slotDate.getTime() === today.getTime();
+    const isTomorrow = slotDate.getTime() === today.getTime() + 86400000;
+    
+    if (isToday) {
+      return t.language === 'zh-TW' ? '今天' : 'Today';
+    } else if (isTomorrow) {
+      return t.language === 'zh-TW' ? '明天' : 'Tomorrow';
+    }
+    
+    return date.toLocaleDateString(t.language === 'zh-TW' ? 'zh-TW' : 'en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+    });
+  };
+
+  const getDateString = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
   };
 
   const copyBookingLink = (): void => {
@@ -380,6 +406,21 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
     );
   }
 
+  // Group slots by date
+  const slotsByDate = slots.reduce((acc, slot) => {
+    const dateKey = getDateString(slot.start_time);
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(slot);
+    return acc;
+  }, {} as Record<string, typeof slots>);
+
+  // Sort dates
+  const sortedDates = Object.keys(slotsByDate).sort((a, b) => {
+    return new Date(a).getTime() - new Date(b).getTime();
+  });
+
   // Get available slots for select all functionality
   const availableSlots = slots.filter(slot => !slot.is_booked);
   const allAvailableSelected = availableSlots.length > 0 && availableSlots.every(slot => selectedSlots.has(slot.id));
@@ -415,9 +456,24 @@ function SlotsList({ slots, onSlotDeleted, onSlotUpdated }: SlotsListProps) {
           )}
         </div>
       )}
-      <div className="slots-grid">
-        {slots.map((slot) => (
-          <div key={slot.id} className="slot-card">
+      <div className="slots-by-date">
+        {sortedDates.map((dateKey) => {
+          const daySlots = slotsByDate[dateKey];
+          const sortedDaySlots = [...daySlots].sort((a, b) => {
+            return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+          });
+          
+          return (
+            <div key={dateKey} className="slots-day-group">
+              <div className="slots-day-header">
+                <h3 className="slots-day-title">{formatDateHeader(daySlots[0].start_time)}</h3>
+                <span className="slots-day-count">
+                  {daySlots.length} {daySlots.length === 1 ? (t.slotsList?.slot || 'slot') : (t.slotsList?.slots || 'slots')}
+                </span>
+              </div>
+              <div className="slots-day-grid">
+                {sortedDaySlots.map((slot) => (
+                  <div key={slot.id} className="slot-card">
             {editing[slot.id] ? (
               <div className="slot-edit-form">
                 <div className="edit-form-row">

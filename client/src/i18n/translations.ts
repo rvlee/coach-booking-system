@@ -150,6 +150,8 @@ export interface Translations {
     selectAll: string;
     selectedCount: string;
     confirmDeleteSelected: string;
+    slot: string;
+    slots: string;
   };
   calendar: {
     selectDate: string;
@@ -323,7 +325,9 @@ export const translations: Record<Language, Translations> = {
       deleteSelected: 'Delete Selected',
       selectAll: 'Select All',
       selectedCount: '{{count}} selected',
-      confirmDeleteSelected: 'Are you sure you want to delete {{count}} slot(s)?'
+      confirmDeleteSelected: 'Are you sure you want to delete {{count}} slot(s)?',
+      slot: 'slot',
+      slots: 'slots'
     },
     calendar: {
       selectDate: 'Select a Date',
@@ -495,7 +499,9 @@ export const translations: Record<Language, Translations> = {
       deleteSelected: '刪除所選',
       selectAll: '全選',
       selectedCount: '已選 {{count}} 個',
-      confirmDeleteSelected: '確定要刪除 {{count}} 個時段嗎？'
+      confirmDeleteSelected: '確定要刪除 {{count}} 個時段嗎？',
+      slot: '時段',
+      slots: '時段'
     },
     calendar: {
       selectDate: '選擇日期',
