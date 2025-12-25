@@ -14,11 +14,17 @@
 
 .slot-grid {
   display: grid;
-  grid-template-columns: 0.7fr 1fr;
+  grid-template-columns: 0.8fr 1fr;
   gap: 1.5rem;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
+  position: relative;
+}
+
+.slot-grid.resizable-section {
+  resize: none;
+  overflow-y: auto;
 }
 
 .calendar-panel {
@@ -63,12 +69,6 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  position: relative;
-  overflow-y: auto;
-}
-
-.slot-form.resizable-section {
-  resize: none;
 }
 
 .google-banner {

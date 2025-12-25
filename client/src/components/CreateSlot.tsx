@@ -287,9 +287,9 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent): void => {
       if (isResizingTimeSetting) {
-        const slotForm = document.querySelector('.slot-form.resizable-section');
-        if (slotForm) {
-          const rect = slotForm.getBoundingClientRect();
+        const slotGrid = document.querySelector('.slot-grid.resizable-section');
+        if (slotGrid) {
+          const rect = slotGrid.getBoundingClientRect();
           const newHeight = e.clientY - rect.top;
           if (newHeight >= 400 && newHeight <= 1200) {
             setTimeSettingHeight(newHeight);
@@ -779,7 +779,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   return (
     <div className="create-slot">
       <h2>{t.createSlot.title}</h2>
-      <div className="slot-grid">
+      <div className="slot-grid resizable-section" style={{ height: `${timeSettingHeight}px` }}>
         <div className="calendar-panel">
           <div className="week-nav">
             <button type="button" onClick={() => setWeekStart(shiftWeek(weekStart, -1))}>
@@ -798,7 +798,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
           />
         </div>
 
-        <form onSubmit={handleSubmit} className="slot-form resizable-section" style={{ height: `${timeSettingHeight}px` }}>
+        <form onSubmit={handleSubmit} className="slot-form">
           {!googleStatus.connected && (
             <div className="google-banner">
               <div>
@@ -1056,14 +1056,14 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
               {loading ? t.createSlot.creating : t.createSlot.createAll}
             </button>
           </div>
-          <div 
-            className="resize-handle"
-            onMouseDown={handleTimeSettingMouseDown}
-            style={{ cursor: 'ns-resize' }}
-          >
-            <div className="resize-handle-line"></div>
-          </div>
         </form>
+        <div 
+          className="resize-handle"
+          onMouseDown={handleTimeSettingMouseDown}
+          style={{ cursor: 'ns-resize' }}
+        >
+          <div className="resize-handle-line"></div>
+        </div>
       </div>
     </div>
   );
