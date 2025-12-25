@@ -792,14 +792,6 @@
   font-size: 0.95rem;
 }
 
-.slots-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-height: 250px;
-  overflow-y: auto;
-}
-
 .slot-day-group {
   background: white;
   border-radius: 6px;
@@ -1126,9 +1118,6 @@
     flex-wrap: wrap;
   }
 
-  .slots-list {
-    max-height: 200px;
-  }
 
   .booking-link-container {
     flex-direction: column;
