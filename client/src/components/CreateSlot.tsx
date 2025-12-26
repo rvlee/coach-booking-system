@@ -82,7 +82,7 @@ function CreateSlot({ onSlotCreated, slotsRefreshTrigger = 0, onWeekChange }: Cr
   const [copyToSourceDate, setCopyToSourceDate] = useState<string | null>(null);
   const [copyToTargetDates, setCopyToTargetDates] = useState<Set<string>>(new Set());
   const [copyToCalendarMonth, setCopyToCalendarMonth] = useState<Date>(new Date());
-  const [timeSettingHeight, setTimeSettingHeight] = useState<number>(400);
+  const [timeSettingHeight, setTimeSettingHeight] = useState<number>(600);
   const [isResizingTimeSetting, setIsResizingTimeSetting] = useState<boolean>(false);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
 
