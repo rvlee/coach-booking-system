@@ -2,11 +2,27 @@ import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'database.sqlite');
+// Support persistent database path via environment variable
+// For production, set DATABASE_PATH to a persistent storage location
+// Examples:
+// - Railway: /data/database.sqlite (using persistent volume)
+// - Local: ./database.sqlite
+// - Default: ./database.sqlite (in server directory)
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'database.sqlite');
+
+// Ensure the directory exists if using a custom path
+if (process.env.DATABASE_PATH) {
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+    console.log(`Created database directory: ${dbDir}`);
+  }
+}
 
 let db;
 
@@ -16,7 +32,7 @@ export function getDb() {
       if (err) {
         console.error('Error opening database:', err);
       } else {
-        console.log('Connected to SQLite database');
+        console.log(`Connected to SQLite database at: ${dbPath}`);
       }
     });
   }
